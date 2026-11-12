@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --navy-base: #f8fafc;
+    --navy-surface: #ffffff;
+    --navy-deep: #01257D;
+    --navy-bright: #0284c7;
+    --electric: #00A3C4;
+    --electric-glow: rgba(0, 163, 196, 0.2);
+    --crimson: #e11d48;
+    --crimson-glow: rgba(225, 29, 72, 0.15);
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #01257D;
+}
+
+/* Matte White Financial Background Canvas */
+.finance-bg {
+  background-color: #f8fafc;
+  background-attachment: fixed;
+}
+
+/* Clean Matte White High-Precision Cards */
+.terminal-card {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px -2px rgba(1, 37, 125, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease-in-out;
+}
+
+.terminal-card:hover {
+  background: #ffffff;
+  border-color: rgba(1, 37, 125, 0.35);
+  box-shadow: 0 10px 25px -4px rgba(1, 37, 125, 0.09), 0 0 16px -2px rgba(0, 180, 216, 0.18);
+}
+
+/* Risk Alert Cards with Crimson Edge */
+.terminal-card-risk {
+  background: rgba(255, 241, 242, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  box-shadow: 0 4px 20px -2px rgba(225, 29, 72, 0.06);
+  transition: all 0.2s ease-in-out;
+}
+
+.terminal-card-risk:hover {
+  border-color: rgba(225, 29, 72, 0.6);
+  box-shadow: 0 8px 25px -4px rgba(225, 29, 72, 0.12);
+}
+
+/* Print / PDF Export Optimization */
+@media print {
+  header, footer, nav, button, input, textarea, .no-print, .finance-bg, .command-palette-backdrop {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .prose {
+    color: #0f172a !important;
+  }
+}

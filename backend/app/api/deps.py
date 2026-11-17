@@ -24,11 +24,15 @@ def verify_admin_key(
     """Verifies administrator credentials for mutation endpoints.
 
     Requires X-API-Key matching settings.ADMIN_API_KEY.
+    If ADMIN_API_KEY is unset, returns 503 "Admin key not configured".
     """
-    expected_key = settings.ADMIN_API_KEY.strip() if settings.ADMIN_API_KEY else ""
-    if not expected_key:
-        return True
+    if not settings.ADMIN_API_KEY or not settings.ADMIN_API_KEY.strip():
+        raise HTTPException(
+            status_code=503,
+            detail="Admin key not configured",
+        )
 
+    expected_key = settings.ADMIN_API_KEY.strip()
     if not x_api_key or x_api_key.strip() != expected_key:
         raise HTTPException(
             status_code=403,

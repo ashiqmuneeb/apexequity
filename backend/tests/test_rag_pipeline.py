@@ -38,9 +38,7 @@ def test_retrieval_with_ticker_filter():
         similarity_top_k=2,
         filters=MetadataFilters(
             filters=[
-                MetadataFilter(
-                    key="ticker", value="NVDA", operator=FilterOperator.EQ
-                )
+                MetadataFilter(key="ticker", value="NVDA", operator=FilterOperator.EQ)
             ]
         ),
     )
@@ -56,9 +54,7 @@ def test_retrieval_with_ticker_filter():
         similarity_top_k=2,
         filters=MetadataFilters(
             filters=[
-                MetadataFilter(
-                    key="ticker", value="AAPL", operator=FilterOperator.EQ
-                )
+                MetadataFilter(key="ticker", value="AAPL", operator=FilterOperator.EQ)
             ]
         ),
     )
@@ -125,5 +121,9 @@ def test_delete_and_reindex_lifecycle():
     assert test_ticker not in updated_articles
 
     # Ensure file is removed from disk
-    file_path = article_service.settings.ARTICLES_DIR / f"{test_ticker}.txt" if hasattr(article_service, "settings") else Path("backend/articles") / f"{test_ticker}.txt"
+    file_path = (
+        article_service.settings.ARTICLES_DIR / f"{test_ticker}.txt"
+        if hasattr(article_service, "settings")
+        else Path("backend/articles") / f"{test_ticker}.txt"
+    )
     assert not file_path.exists()

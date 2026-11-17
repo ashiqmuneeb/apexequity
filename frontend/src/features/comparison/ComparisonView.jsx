@@ -35,7 +35,7 @@ const FEATURED_MATCHUPS = [
   },
 ];
 
-export default function ComparisonView({ availableTickers = [], onOpenKeyModal }) {
+export default function ComparisonView({ availableTickers = [], onOpenKeyModal, onGoToFilings }) {
   const [stockA, setStockA] = useState('NVDA');
   const [stockB, setStockB] = useState('GOOGL');
   const [customPromptEnabled, setCustomPromptEnabled] = useState(false);
@@ -123,9 +123,6 @@ export default function ComparisonView({ availableTickers = [], onOpenKeyModal }
           <div>
             <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
               <span>Dual-Issuer Comparative Analysis</span>
-              <span className="text-[11px] font-bold text-[#01257D] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 shadow-xs">
-                Audited Disclosures
-              </span>
             </h2>
             <p className="text-xs text-slate-600 mt-0.5">
               Side-by-side benchmarking of revenue trajectories, margin structures, and strategic risk factors.
@@ -294,7 +291,8 @@ export default function ComparisonView({ availableTickers = [], onOpenKeyModal }
           title="Comparative Evaluation Error"
           message={error}
           onRetry={() => handleCompare(null, stockA, stockB)}
-          onOpenKeyModal={onOpenKeyModal}
+          onConfigureKey={onOpenKeyModal}
+          onGoToFilings={onGoToFilings}
         />
       )}
 
@@ -416,6 +414,10 @@ export default function ComparisonView({ availableTickers = [], onOpenKeyModal }
                               <span className="text-slate-600 font-bold">${result.stock_b}:</span> {valB !== null && valB !== undefined ? valB : 'N/A'}
                             </div>
                           </div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono mt-2 pt-1 border-t border-slate-100">
+                            <span>{item.source || 'Yahoo Finance snapshot'}</span>
+                            <span>{item.period || 'period not stated'}</span>
+                          </div>
                         </div>
                       );
                     })}
@@ -423,7 +425,7 @@ export default function ComparisonView({ availableTickers = [], onOpenKeyModal }
 
                   <div className="pt-3 border-t border-slate-200 mt-4 text-[10px] text-slate-500 font-mono flex items-center justify-between">
                     <span>Comparative Financial Benchmark</span>
-                    <span className="text-[#01257D] font-bold">Grounded Filing Comparison</span>
+                    <span className="text-[#01257D] font-bold">Ingested Document Comparison</span>
                   </div>
                 </div>
               </div>
@@ -448,7 +450,7 @@ export default function ComparisonView({ availableTickers = [], onOpenKeyModal }
               >
                 <span className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-[#01257D]" />
-                  <span>Audited Context Passages &amp; Evidence ({result.sources.length} Chunks)</span>
+                  <span>Document Context Passages &amp; Evidence ({result.sources.length} Chunks)</span>
                 </span>
                 {showSources ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>

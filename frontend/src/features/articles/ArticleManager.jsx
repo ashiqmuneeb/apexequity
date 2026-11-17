@@ -276,9 +276,9 @@ export default function ArticleManager({ onRebuildIndex, isRebuilding, onCorpusC
               <X className="h-5 w-5" />
             </button>
 
-            <h3 className="text-base font-bold text-slate-900 mb-1">Deposit Filing or Analyst Note</h3>
+            <h3 className="text-base font-bold text-slate-900 mb-1">Deposit Filing or Financial Note</h3>
             <p className="text-xs text-slate-600 mb-4">
-              Enter the ticker symbol and paste audited 10-K/10-Q disclosures, earnings call transcripts, or equity research notes.
+              Enter the ticker symbol and paste 10-K/10-Q disclosures, earnings call transcripts, or equity research notes.
             </p>
 
             <form onSubmit={handleSaveArticle} className="space-y-4">

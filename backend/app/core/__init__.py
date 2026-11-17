@@ -3,4 +3,3 @@ from app.core.logger import logger
 
 
 __all__ = ["settings", "logger"]
-

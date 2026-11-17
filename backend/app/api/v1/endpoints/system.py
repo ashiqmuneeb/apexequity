@@ -20,9 +20,7 @@ def get_system_status(
 ):
     """Provides system health, Groq API key presence, and vector storage readiness."""
     has_key = bool(settings.get_groq_api_key())
-    index_exists = settings.STORAGE_DIR.exists() and any(
-        settings.STORAGE_DIR.iterdir()
-    )
+    index_exists = settings.STORAGE_DIR.exists() and any(settings.STORAGE_DIR.iterdir())
     articles = [a.ticker for a in article_svc.list_articles()]
 
     return SystemStatusResponse(

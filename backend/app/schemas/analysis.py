@@ -45,9 +45,7 @@ class AnalysisResponse(BaseModel):
         None, description="Structured financial metrics or null"
     )
     sources: list[SourceEvidenceNode] = Field(default_factory=list)
-    is_sample: bool = Field(
-        False, description="Whether this response uses sample data"
-    )
+    is_sample: bool = Field(False, description="Whether this response uses sample data")
 
 
 class ComparisonResponse(BaseModel):
@@ -59,9 +57,7 @@ class ComparisonResponse(BaseModel):
         default_factory=list, description="Side-by-side KPI comparison data for charts"
     )
     sources: list[SourceEvidenceNode] = Field(default_factory=list)
-    is_sample: bool = Field(
-        False, description="Whether this response uses sample data"
-    )
+    is_sample: bool = Field(False, description="Whether this response uses sample data")
 
 
 class CustomQueryResponse(BaseModel):

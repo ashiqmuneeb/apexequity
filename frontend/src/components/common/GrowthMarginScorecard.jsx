@@ -8,11 +8,40 @@ export default function GrowthMarginScorecard({ metrics, sentiment, ticker, isSa
   const revenue = metrics?.revenue_label || (metrics?.revenue ? `$${metrics.revenue}B` : null);
   const primaryDriver = metrics?.primary_driver;
 
+  const defaultSource = isSample
+    ? 'Yahoo Finance snapshot'
+    : (metrics?.source === 'SEC filing' ? 'SEC filing' : 'Yahoo Finance snapshot');
+
+  const growthSource = metrics?.growth_source || defaultSource;
+  const growthPeriod = metrics?.growth_period || 'period not stated';
+
+  const marginSource = metrics?.margin_source || defaultSource;
+  const marginPeriod = metrics?.margin_period || 'period not stated';
+
+  const revSource = metrics?.revenue_source || defaultSource;
+  const revPeriod = metrics?.revenue_period || 'period not stated';
+
   const hasData = growth !== null && growth !== undefined || margin !== null && margin !== undefined;
 
   // Transparent, disclosed formula description
   const formulaExplanation =
-    "Evaluation criteria: YoY Revenue Growth (>15% benchmark) paired with Gross Margin (>50% pricing power). Only computed when audited filings or market filings disclose both figures.";
+    "Evaluation criteria: YoY Revenue Growth (>15% benchmark) paired with Gross Margin (>50% pricing power). Only computed when ingested documents or market filings disclose both figures.";
+
+  // Factual headline derived purely from displayed figures, without ungrounded trend claims
+  const headline = (() => {
+    if (!hasData) return 'Not disclosed in the retrieved filings';
+    const parts = [];
+    if (growth !== null && growth !== undefined) {
+      parts.push(`Revenue growth ${growth > 0 ? `+${growth}%` : `${growth}%`} YoY`);
+    }
+    if (margin !== null && margin !== undefined) {
+      parts.push(`gross margin ${margin}%`);
+    }
+    if (parts.length === 0 && revenue) {
+      parts.push(`revenue ${revenue}`);
+    }
+    return parts.length > 0 ? parts.join(', ') : 'Disclosed document financials';
+  })();
 
   return (
     <div className="h-full bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between gap-4 shadow-xs">
@@ -37,7 +66,7 @@ export default function GrowthMarginScorecard({ metrics, sentiment, ticker, isSa
             </span>
           )}
           <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-[#01257D] shadow-xs">
-            {hasData ? 'Grounded' : 'Data Absent'}
+            {hasData ? (isSample ? 'Sample document' : 'From ingested document') : 'Data Absent'}
           </span>
         </div>
       </div>
@@ -47,13 +76,11 @@ export default function GrowthMarginScorecard({ metrics, sentiment, ticker, isSa
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-              <span>${ticker} Financial Grounding</span>
+              <span>${ticker} Document Extraction</span>
               {hasData && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
             </div>
             <p className="text-xs text-slate-600 mt-0.5">
-              {hasData
-                ? (sentiment || (growth > 20 && margin > 50 ? 'Strong Growth & Expanding Operating Margins' : 'Disclosed Filing Financials'))
-                : 'Not disclosed in the retrieved filings'}
+              {headline}
             </p>
           </div>
         </div>
@@ -73,34 +100,49 @@ export default function GrowthMarginScorecard({ metrics, sentiment, ticker, isSa
 
       {/* Bottom: Sub-Score Pillars */}
       <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200">
-        <div className="bg-slate-50 border border-slate-200/90 p-2.5 rounded-xl text-center shadow-xs">
-          <div className="flex items-center justify-center gap-1 text-[10px] text-slate-600 font-semibold mb-0.5">
-            <TrendingUp className="h-3 w-3 text-[#01257D]" />
-            <span>YoY Growth</span>
+        <div className="bg-slate-50 border border-slate-200/90 p-2.5 rounded-xl text-center shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-slate-600 font-semibold mb-0.5">
+              <TrendingUp className="h-3 w-3 text-[#01257D]" />
+              <span>YoY Growth</span>
+            </div>
+            <span className="text-xs font-mono font-bold text-slate-900">
+              {growth !== null && growth !== undefined ? (growth > 0 ? `+${growth}%` : `${growth}%`) : 'N/A'}
+            </span>
           </div>
-          <span className="text-xs font-mono font-bold text-slate-900">
-            {growth !== null && growth !== undefined ? (growth > 0 ? `+${growth}%` : `${growth}%`) : 'N/A'}
-          </span>
+          <div className="text-[9px] text-slate-500 font-mono mt-1 pt-1 border-t border-slate-200/60 truncate" title={`${growthSource} • ${growthPeriod}`}>
+            {growthSource} &bull; {growthPeriod}
+          </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-200/90 p-2.5 rounded-xl text-center shadow-xs">
-          <div className="flex items-center justify-center gap-1 text-[10px] text-slate-600 font-semibold mb-0.5">
-            <ShieldCheck className="h-3 w-3 text-[#01257D]" />
-            <span>Gross Margin</span>
+        <div className="bg-slate-50 border border-slate-200/90 p-2.5 rounded-xl text-center shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-slate-600 font-semibold mb-0.5">
+              <ShieldCheck className="h-3 w-3 text-[#01257D]" />
+              <span>Gross Margin</span>
+            </div>
+            <span className="text-xs font-mono font-bold text-slate-900">
+              {margin !== null && margin !== undefined ? `${margin}%` : 'N/A'}
+            </span>
           </div>
-          <span className="text-xs font-mono font-bold text-slate-900">
-            {margin !== null && margin !== undefined ? `${margin}%` : 'N/A'}
-          </span>
+          <div className="text-[9px] text-slate-500 font-mono mt-1 pt-1 border-t border-slate-200/60 truncate" title={`${marginSource} • ${marginPeriod}`}>
+            {marginSource} &bull; {marginPeriod}
+          </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-200/90 p-2.5 rounded-xl text-center shadow-xs">
-          <div className="flex items-center justify-center gap-1 text-[10px] text-slate-600 font-semibold mb-0.5">
-            <Award className="h-3 w-3 text-[#01257D]" />
-            <span>Total Rev</span>
+        <div className="bg-slate-50 border border-slate-200/90 p-2.5 rounded-xl text-center shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-slate-600 font-semibold mb-0.5">
+              <Award className="h-3 w-3 text-[#01257D]" />
+              <span>Total Rev</span>
+            </div>
+            <span className="text-xs font-mono font-bold text-slate-900 truncate block">
+              {revenue || 'N/A'}
+            </span>
           </div>
-          <span className="text-xs font-mono font-bold text-slate-900 truncate block">
-            {revenue || 'N/A'}
-          </span>
+          <div className="text-[9px] text-slate-500 font-mono mt-1 pt-1 border-t border-slate-200/60 truncate" title={`${revSource} • ${revPeriod}`}>
+            {revSource} &bull; {revPeriod}
+          </div>
         </div>
       </div>
 

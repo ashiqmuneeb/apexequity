@@ -1,4 +1,3 @@
-
 from fastapi import HTTPException
 from llama_index.core import (
     Settings,
@@ -162,7 +161,11 @@ class RAGEngineService:
 
         try:
             # Re-initialize LLM if key changed or not cached
-            if self._cached_llm is None or self._cached_api_key != groq_key or force_reload:
+            if (
+                self._cached_llm is None
+                or self._cached_api_key != groq_key
+                or force_reload
+            ):
                 llm, model_name = self._validate_and_get_llm(groq_key)
                 self._cached_llm = llm
                 self._active_model_name = model_name

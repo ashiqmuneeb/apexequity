@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = (
         "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
     )
-    ADMIN_API_KEY: str = "dev-admin-key"
+    ADMIN_API_KEY: str | None = None
 
     def get_allowed_origins(self) -> list[str]:
         """Parses comma-separated allowed origins into a clean string list."""

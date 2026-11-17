@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 
+from app.core.config import settings
 from app.core.logger import logger
 from app.schemas.analysis import (
     AnalysisResponse,
@@ -45,6 +46,13 @@ class AnalysisService:
         if not clean_ticker:
             raise HTTPException(
                 status_code=400, detail="Stock ticker symbol is required."
+            )
+
+        file_path = settings.ARTICLES_DIR / f"{clean_ticker}.txt"
+        if not file_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"No documents ingested for {clean_ticker} yet. Add one in the Filings tab.",
             )
 
         # Apply ticker metadata filter to prevent cross-stock contamination
@@ -101,6 +109,18 @@ class AnalysisService:
                 detail="Both stock tickers are required for comparison.",
             )
 
+        missing = []
+        if not (settings.ARTICLES_DIR / f"{clean_a}.txt").exists():
+            missing.append(clean_a)
+        if not (settings.ARTICLES_DIR / f"{clean_b}.txt").exists():
+            missing.append(clean_b)
+
+        if missing:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No documents ingested for {', '.join(missing)} yet. Add one in the Filings tab.",
+            )
+
         engine = rag_engine_service.get_query_engine(override_key=groq_api_key)
 
         prompt = (
@@ -127,16 +147,22 @@ class AnalysisService:
                     "metric": "Revenue ($B)",
                     clean_a: meta_a.get("revenue"),
                     clean_b: meta_b.get("revenue"),
+                    "source": meta_a.get("revenue_source") or "Yahoo Finance snapshot",
+                    "period": meta_a.get("revenue_period") or "period not stated",
                 },
                 {
                     "metric": "YoY Growth (%)",
                     clean_a: meta_a.get("growth_yoy"),
                     clean_b: meta_b.get("growth_yoy"),
+                    "source": meta_a.get("growth_source") or "Yahoo Finance snapshot",
+                    "period": meta_a.get("growth_period") or "period not stated",
                 },
                 {
                     "metric": "Gross Margin (%)",
                     clean_a: meta_a.get("gross_margin"),
                     clean_b: meta_b.get("gross_margin"),
+                    "source": meta_a.get("margin_source") or "Yahoo Finance snapshot",
+                    "period": meta_a.get("margin_period") or "period not stated",
                 },
             ]
 
@@ -165,8 +191,14 @@ class AnalysisService:
         """Executes a free-form semantic query across the financial corpus."""
         clean_prompt = prompt.strip()
         if not clean_prompt:
+            raise HTTPException(status_code=400, detail="Query prompt cannot be empty.")
+
+        if not settings.ARTICLES_DIR.exists() or not any(
+            settings.ARTICLES_DIR.glob("*.txt")
+        ):
             raise HTTPException(
-                status_code=400, detail="Query prompt cannot be empty."
+                status_code=404,
+                detail="No documents ingested yet. Add one in the Filings tab.",
             )
 
         engine = rag_engine_service.get_query_engine(override_key=groq_api_key)

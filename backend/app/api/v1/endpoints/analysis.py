@@ -52,4 +52,3 @@ def custom_query(
         prompt=payload.prompt,
         groq_api_key=payload.groq_api_key,
     )
-

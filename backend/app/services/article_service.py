@@ -159,9 +159,7 @@ class ArticleService:
             pe = info.get("forwardPE")
             pe_str = f"{pe:.1f}" if pe else "N/A"
 
-            summary = info.get(
-                "longBusinessSummary", "No corporate summary available."
-            )
+            summary = info.get("longBusinessSummary", "No corporate summary available.")
 
             # Compile into a structured corporate overview document
             content = (
@@ -232,9 +230,10 @@ class ArticleService:
 
         # Attach ticker metadata and strip absolute paths
         for doc in documents:
-            file_name = doc.metadata.get("file_name") or Path(
-                doc.metadata.get("file_path", "")
-            ).name
+            file_name = (
+                doc.metadata.get("file_name")
+                or Path(doc.metadata.get("file_path", "")).name
+            )
             ticker = Path(file_name).stem.upper()
             doc.metadata["ticker"] = ticker
             doc.metadata["file_name"] = file_name
@@ -256,9 +255,7 @@ class ArticleService:
 
         # Invalidate any cached query engine
         rag_engine_service.invalidate_cache()
-        logger.info(
-            f"Indexing complete! {len(documents)} document chunk(s) saved."
-        )
+        logger.info(f"Indexing complete! {len(documents)} document chunk(s) saved.")
         return len(documents), files
 
 

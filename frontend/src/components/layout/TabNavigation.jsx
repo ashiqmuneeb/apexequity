@@ -21,7 +21,7 @@ export default function TabNavigation({ activeTab, onTabChange, articleCount = 0
     },
     {
       id: TABS.ARTICLES,
-      label: 'SEC Filings',
+      label: 'Filings',
       badge: articleCount ?? 0,
       icon: FolderKanban,
     },

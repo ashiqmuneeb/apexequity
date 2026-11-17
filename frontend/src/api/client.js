@@ -4,10 +4,7 @@
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
-const ADMIN_API_KEY =
-  import.meta.env.VITE_ADMIN_API_KEY ||
-  (typeof window !== 'undefined' ? localStorage.getItem('apex_admin_key') : null) ||
-  'dev-admin-key';
+const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY;
 
 export async function apiClient(endpoint, options = {}) {
   const { body, headers = {}, ...customConfig } = options;
@@ -16,8 +13,8 @@ export async function apiClient(endpoint, options = {}) {
     'Content-Type': 'application/json',
   };
 
-  if (ADMIN_API_KEY) {
-    defaultHeaders['X-API-Key'] = ADMIN_API_KEY;
+  if (ADMIN_API_KEY && ADMIN_API_KEY.trim()) {
+    defaultHeaders['X-API-Key'] = ADMIN_API_KEY.trim();
   }
 
   const config = {
@@ -39,7 +36,10 @@ export async function apiClient(endpoint, options = {}) {
   if (!response.ok) {
     const errorMessage =
       data?.detail || data?.message || `HTTP ${response.status}: Request failed`;
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    error.data = data;
+    throw error;
   }
 
   return data;

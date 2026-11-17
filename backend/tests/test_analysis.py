@@ -18,3 +18,25 @@ def test_custom_query_validation(client):
     response = client.post("/api/v1/analyze/custom", json={})
     assert response.status_code == 422
 
+
+def test_single_stock_missing_document_returns_404(client):
+    """Verifies that requesting analysis for an uningested ticker returns HTTP 404 with friendly message."""
+    response = client.post("/api/v1/analyze/single", json={"ticker": "MISSINGTICKER"})
+    assert response.status_code == 404
+    assert (
+        "No documents ingested for MISSINGTICKER yet. Add one in the Filings tab."
+        in response.json()["detail"]
+    )
+
+
+def test_compare_missing_document_returns_404(client):
+    """Verifies that comparing with an uningested ticker returns HTTP 404 with friendly message."""
+    response = client.post(
+        "/api/v1/analyze/compare",
+        json={"stock_a": "NVDA", "stock_b": "MISSINGTICKER"},
+    )
+    assert response.status_code == 404
+    assert (
+        "No documents ingested for MISSINGTICKER yet. Add one in the Filings tab."
+        in response.json()["detail"]
+    )

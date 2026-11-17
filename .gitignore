@@ -18,7 +18,10 @@ backend/data/
 # Environment & Secrets
 .env
 backend/.env
+frontend/.env
 .env.local
+backend/.env.local
+frontend/.env.local
 
 # Node & Frontend
 node_modules/

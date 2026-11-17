@@ -64,9 +64,7 @@ def save_article(
 
     Requires X-API-Key admin authorization.
     """
-    filename = service.save_article(
-        ticker=payload.ticker, content=payload.content
-    )
+    filename = service.save_article(ticker=payload.ticker, content=payload.content)
     return ArticleActionResponse(
         message=f"Document for {payload.ticker.upper()} saved successfully.",
         filename=filename,

@@ -18,9 +18,11 @@ def test_list_articles(client):
     assert "content" in first
 
 
-def test_save_and_delete_article(client):
+def test_save_and_delete_article(client, monkeypatch):
     """Verifies creating and deleting an article document using admin authentication."""
-    headers = {"X-API-Key": settings.ADMIN_API_KEY}
+    test_key = "test-article-admin-key"
+    monkeypatch.setattr(settings, "ADMIN_API_KEY", test_key)
+    headers = {"X-API-Key": test_key}
     test_ticker = "TESTXYZ"
     test_content = "This is a temporary test financial summary for unit testing."
 
@@ -42,9 +44,11 @@ def test_save_and_delete_article(client):
     assert "deleted successfully" in del_resp.json()["message"]
 
 
-def test_fetch_live_stock_validation(client):
+def test_fetch_live_stock_validation(client, monkeypatch):
     """Verifies that empty ticker requests to live fetch are rejected."""
-    headers = {"X-API-Key": settings.ADMIN_API_KEY}
+    test_key = "test-article-admin-key"
+    monkeypatch.setattr(settings, "ADMIN_API_KEY", test_key)
+    headers = {"X-API-Key": test_key}
     resp = client.post(
         "/api/v1/articles/fetch-live", json={"ticker": ""}, headers=headers
     )

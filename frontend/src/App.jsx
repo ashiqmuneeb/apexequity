@@ -105,6 +105,7 @@ export default function App() {
               selectedTicker={selectedTicker}
               onOpenKeyModal={() => setIsKeyModalOpen(true)}
               onNavigateCustom={handleNavigateCustom}
+              onGoToFilings={() => setActiveTab(TABS.ARTICLES)}
             />
           )}
 
@@ -112,6 +113,7 @@ export default function App() {
             <ComparisonView
               availableTickers={status?.articles}
               onOpenKeyModal={() => setIsKeyModalOpen(true)}
+              onGoToFilings={() => setActiveTab(TABS.ARTICLES)}
             />
           )}
 
@@ -119,6 +121,7 @@ export default function App() {
             <CustomQueryView
               onOpenKeyModal={() => setIsKeyModalOpen(true)}
               initialPrompt={customInitialPrompt}
+              onGoToFilings={() => setActiveTab(TABS.ARTICLES)}
             />
           )}
 

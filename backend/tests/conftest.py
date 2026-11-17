@@ -8,4 +8,3 @@ from app.main import app
 def client():
     """Provides a TestClient fixture configured for the FastAPI app."""
     return TestClient(app)
-

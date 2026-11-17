@@ -18,4 +18,3 @@ def setup_logger(name: str = "financial_rag") -> logging.Logger:
 
 
 logger = setup_logger()
-

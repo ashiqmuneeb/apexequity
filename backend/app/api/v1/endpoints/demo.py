@@ -27,18 +27,28 @@ SAMPLE_SINGLE_STOCK = {
         "* **Foundry & CoWoS Supply Limits:** Advanced packaging constraints dictate unit throughput limits.\n\n"
         "*(Note: This report is sample illustrative data for platform evaluation purposes only. Not investment advice.)*"
     ),
-    "sentiment": "Strong Growth & Expanding Operating Margins (Sample)",
+    "sentiment": "Revenue growth +265% YoY, gross margin 76% (Sample)",
     "metrics": {
         "source": "Sample data",
+        "source_label": "Yahoo Finance snapshot",
+        "source_badge": "Sample data",
         "revenue": 22.1,
         "revenue_label": "$22.1B",
+        "revenue_source": "Yahoo Finance snapshot",
+        "revenue_period": "Q4",
         "growth_yoy": 265.0,
         "growth_label": "+265%",
+        "growth_source": "Yahoo Finance snapshot",
+        "growth_period": "Q4 YoY",
         "gross_margin": 76.0,
         "margin_label": "76.0%",
+        "margin_source": "Yahoo Finance snapshot",
+        "margin_period": "period not stated",
         "primary_driver": "H100 Hopper & Accelerated Computing",
+        "driver_source": "Yahoo Finance snapshot",
+        "driver_period": "period not stated",
         "cloud_ai_revenue": "$18.4B Data Center",
-        "sentiment": "Strong Growth (Sample)",
+        "sentiment": "Revenue growth +265% YoY, gross margin 76% (Sample)",
         "reason": None,
     },
     "sources": [
@@ -76,9 +86,27 @@ SAMPLE_COMPARISON = {
         "*(Note: Sample illustrative benchmark data. Not investment advice.)*"
     ),
     "comparison_metrics": [
-        {"metric": "Revenue ($B)", "NVDA": 22.1, "GOOGL": 86.3},
-        {"metric": "YoY Growth (%)", "NVDA": 265.0, "GOOGL": 13.0},
-        {"metric": "Gross Margin (%)", "NVDA": 76.0, "GOOGL": 56.5},
+        {
+            "metric": "Revenue ($B)",
+            "NVDA": 22.1,
+            "GOOGL": 86.3,
+            "source": "Yahoo Finance snapshot",
+            "period": "Q4",
+        },
+        {
+            "metric": "YoY Growth (%)",
+            "NVDA": 265.0,
+            "GOOGL": 13.0,
+            "source": "Yahoo Finance snapshot",
+            "period": "Q4 YoY",
+        },
+        {
+            "metric": "Gross Margin (%)",
+            "NVDA": 76.0,
+            "GOOGL": 56.5,
+            "source": "Yahoo Finance snapshot",
+            "period": "period not stated",
+        },
     ],
     "sources": [
         {
@@ -107,6 +135,8 @@ SAMPLE_COVERAGE = {
             "margin": "76.0%",
             "trend": "up",
             "badge": "Sample Data",
+            "source": "Yahoo Finance snapshot",
+            "period": "Q4",
         },
         {
             "ticker": "MSFT",
@@ -117,6 +147,8 @@ SAMPLE_COVERAGE = {
             "margin": "68.4%",
             "trend": "up",
             "badge": "Sample Data",
+            "source": "Yahoo Finance snapshot",
+            "period": "Q2",
         },
         {
             "ticker": "GOOGL",
@@ -127,6 +159,8 @@ SAMPLE_COVERAGE = {
             "margin": "56.5%",
             "trend": "up",
             "badge": "Sample Data",
+            "source": "Yahoo Finance snapshot",
+            "period": "Q4",
         },
         {
             "ticker": "AAPL",
@@ -137,6 +171,8 @@ SAMPLE_COVERAGE = {
             "margin": "45.9%",
             "trend": "down",
             "badge": "Sample Data",
+            "source": "Yahoo Finance snapshot",
+            "period": "Q1",
         },
     ],
 }

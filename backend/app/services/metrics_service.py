@@ -27,47 +27,130 @@ class MetricsService:
 
         try:
             content = file_path.read_text(encoding="utf-8")
-            # Look for structured lines produced by SEC ingestion or filing summaries
+            is_sec = bool(
+                re.search(
+                    r"\b(10-K|10-Q|SEC EDGAR|Form 10-K|Securities and Exchange Commission)\b",
+                    content,
+                    re.IGNORECASE,
+                )
+            )
+            doc_source = "SEC filing" if is_sec else "Yahoo Finance snapshot"
+
+            # Parse Revenue & Period
             rev_match = re.search(
-                r"Total Revenue(?:\s*\(TTM\))?:\s*\$?([\d.]+)\s*Billion",
+                r"Total Revenue(?:\s*\(([^)]+)\))?:\s*\$?([\d.]+)\s*Billion",
                 content,
                 re.IGNORECASE,
             )
+            rev_period = "period not stated"
+            rev_val = None
+            if rev_match:
+                rev_period = (
+                    rev_match.group(1).strip()
+                    if rev_match.group(1)
+                    else "period not stated"
+                )
+                rev_val = float(rev_match.group(2))
+            else:
+                alt_rev = re.search(
+                    r"(?:(Q[1-4]|FY\s*\d{2,4}|full year)\s+)?revenue(?:\s+(?:of|reached))?\s*\$?([\d.]+)\s*(?:billion|B)",
+                    content,
+                    re.IGNORECASE,
+                )
+                if alt_rev:
+                    if alt_rev.group(1):
+                        rev_period = alt_rev.group(1).strip()
+                    rev_val = float(alt_rev.group(2))
+
+            # Parse Growth & Period
             growth_match = re.search(
-                r"Revenue Growth(?:\s*\(YoY\))?:\s*([+-]?[\d.]+)%",
+                r"(?:Quarterly\s+)?Revenue Growth(?:\s*\(([^)]+)\))?:\s*([+-]?[\d.]+)%",
                 content,
                 re.IGNORECASE,
             )
+            growth_period = "period not stated"
+            growth_val = None
+            if growth_match:
+                growth_period = (
+                    growth_match.group(1).strip() if growth_match.group(1) else "YoY"
+                )
+                growth_val = float(growth_match.group(2))
+            else:
+                alt_growth = re.search(
+                    r"(?:up|grew|increased by|increase of)\s*([+-]?[\d.]+)%\s*(?:(?:from|over)\s+(?:a\s+year\s+ago|prior-year|prior\s+year))?",
+                    content,
+                    re.IGNORECASE,
+                )
+                if alt_growth:
+                    growth_val = float(alt_growth.group(1))
+                    growth_period = "YoY"
+
+            # Parse Margin & Period
             margin_match = re.search(
-                r"Gross Margin:\s*([\d.]+)%",
+                r"Gross Margin(?:\s*\(([^)]+)\))?:\s*([\d.]+)%",
                 content,
                 re.IGNORECASE,
             )
+            margin_period = "period not stated"
+            margin_val = None
+            if margin_match:
+                margin_period = (
+                    margin_match.group(1).strip()
+                    if margin_match.group(1)
+                    else "period not stated"
+                )
+                margin_val = float(margin_match.group(2))
+            else:
+                alt_margin = re.search(
+                    r"Gross margin(?:\s*\w+)*\s*([\d.]+)%",
+                    content,
+                    re.IGNORECASE,
+                )
+                if alt_margin:
+                    margin_val = float(alt_margin.group(1))
+                    margin_period = "period not stated"
+
+            # Parse Primary Driver / Industry
             industry_match = re.search(
                 r"Industry:\s*([^|\n]+)",
                 content,
                 re.IGNORECASE,
             )
-
-            rev_val = float(rev_match.group(1)) if rev_match else None
-            growth_val = float(growth_match.group(1)) if growth_match else None
-            margin_val = float(margin_match.group(1)) if margin_match else None
             industry = industry_match.group(1).strip() if industry_match else None
+            if not industry:
+                # Check for segment mentions like Data Center or Cloud
+                seg_match = re.search(
+                    r"\b(Data Center|Cloud|Personal Computing|Semiconductors)\b",
+                    content,
+                    re.IGNORECASE,
+                )
+                if seg_match:
+                    industry = seg_match.group(1).strip()
 
             if any(v is not None for v in (rev_val, growth_val, margin_val)):
                 return {
-                    "source": "ingested_document",
+                    "source": doc_source,
+                    "source_label": doc_source,
+                    "source_badge": "From ingested document",
                     "revenue": rev_val,
                     "revenue_label": f"${rev_val}B" if rev_val is not None else "N/A",
+                    "revenue_source": doc_source,
+                    "revenue_period": rev_period,
                     "growth_yoy": growth_val,
                     "growth_label": (
                         f"{growth_val:+}%" if growth_val is not None else "N/A"
                     ),
+                    "growth_source": doc_source,
+                    "growth_period": growth_period,
                     "gross_margin": margin_val,
                     "margin_label": (
                         f"{margin_val}%" if margin_val is not None else "N/A"
                     ),
+                    "margin_source": doc_source,
+                    "margin_period": margin_period,
                     "primary_driver": industry,
+                    "driver_source": doc_source,
+                    "driver_period": "period not stated",
                     "cloud_ai_revenue": None,
                     "sentiment": None,
                     "reason": None,
@@ -101,17 +184,28 @@ class MetricsService:
 
             industry = info.get("industry")
 
+            doc_source = "Yahoo Finance snapshot"
             return {
-                "source": "yfinance (cached, optional)",
+                "source": doc_source,
+                "source_label": doc_source,
+                "source_badge": "From Yahoo Finance snapshot",
                 "revenue": rev_val,
                 "revenue_label": f"${rev_val}B" if rev_val is not None else "N/A",
+                "revenue_source": doc_source,
+                "revenue_period": "TTM",
                 "growth_yoy": growth_val,
                 "growth_label": (
                     f"{growth_val:+}%" if growth_val is not None else "N/A"
                 ),
+                "growth_source": doc_source,
+                "growth_period": "Quarterly YoY",
                 "gross_margin": gm_val,
                 "margin_label": f"{gm_val}%" if gm_val is not None else "N/A",
+                "margin_source": doc_source,
+                "margin_period": "period not stated",
                 "primary_driver": industry,
+                "driver_source": doc_source,
+                "driver_period": "period not stated",
                 "cloud_ai_revenue": None,
                 "sentiment": None,
                 "reason": None,
@@ -149,13 +243,23 @@ class MetricsService:
         # 3. Grounded fallback: null values + truthful reason
         empty_result = {
             "source": None,
+            "source_label": "Unknown",
+            "source_badge": "Data Absent",
             "revenue": None,
             "revenue_label": "N/A",
+            "revenue_source": "period not stated",
+            "revenue_period": "period not stated",
             "growth_yoy": None,
             "growth_label": "N/A",
+            "growth_source": "period not stated",
+            "growth_period": "period not stated",
             "gross_margin": None,
             "margin_label": "N/A",
+            "margin_source": "period not stated",
+            "margin_period": "period not stated",
             "primary_driver": None,
+            "driver_source": "period not stated",
+            "driver_period": "period not stated",
             "cloud_ai_revenue": None,
             "sentiment": None,
             "reason": (
@@ -167,4 +271,3 @@ class MetricsService:
 
 
 metrics_service = MetricsService()
-

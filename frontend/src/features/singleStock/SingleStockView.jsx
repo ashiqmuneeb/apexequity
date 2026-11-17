@@ -12,7 +12,13 @@ import InfoTooltip from '../../components/common/InfoTooltip';
 import MarketCommandCenter from '../../components/common/MarketCommandCenter';
 import { DEFAULT_TICKERS } from '../../constants/stockTickers';
 
-export default function SingleStockView({ availableTickers = [], selectedTicker = '', onOpenKeyModal, onNavigateCustom }) {
+export default function SingleStockView({
+  availableTickers = [],
+  selectedTicker = '',
+  onOpenKeyModal,
+  onNavigateCustom,
+  onGoToFilings,
+}) {
   const [ticker, setTicker] = useState(selectedTicker || 'NVDA');
   const [customPromptEnabled, setCustomPromptEnabled] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
@@ -121,9 +127,6 @@ export default function SingleStockView({ availableTickers = [], selectedTicker 
           <div>
             <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
               <span>Automated Equity Research Dossier</span>
-              <span className="text-[11px] font-bold text-[#01257D] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 shadow-xs">
-                Audited Disclosures
-              </span>
             </h2>
             <p className="text-xs text-slate-600 mt-0.5">
               Synthesizes balance sheets, operating margins, risk factors, and forward guidance with citations.
@@ -215,7 +218,8 @@ export default function SingleStockView({ availableTickers = [], selectedTicker 
           title="Analysis Generation Error"
           message={error}
           onRetry={() => handleGenerate(null, ticker)}
-          onOpenKeyModal={onOpenKeyModal}
+          onConfigureKey={onOpenKeyModal}
+          onGoToFilings={onGoToFilings}
         />
       )}
 
@@ -385,7 +389,7 @@ export default function SingleStockView({ availableTickers = [], selectedTicker 
                 >
                   <span className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-[#01257D]" />
-                    <span>Audited Context Passages &amp; Evidence ({result.sources.length} Chunks)</span>
+                    <span>Document Context Passages &amp; Evidence ({result.sources.length} Chunks)</span>
                   </span>
                   {showSources ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>

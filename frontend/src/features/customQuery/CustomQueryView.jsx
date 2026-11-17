@@ -6,7 +6,7 @@ import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import ErrorCard from '../../components/common/ErrorCard';
 import { SAMPLE_QUESTIONS } from '../../constants/stockTickers';
 
-export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '' }) {
+export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '', onGoToFilings }) {
   const [prompt, setPrompt] = useState(initialPrompt || '');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -119,7 +119,8 @@ export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '' }) 
           title="Inquiry Execution Error"
           message={error}
           onRetry={handleQuery}
-          onOpenKeyModal={onOpenKeyModal}
+          onConfigureKey={onOpenKeyModal}
+          onGoToFilings={onGoToFilings}
         />
       )}
 

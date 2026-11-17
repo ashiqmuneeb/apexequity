@@ -7,6 +7,9 @@ import InfoTooltip from './InfoTooltip';
 export default function MetricsScorecard({ metrics, sentiment, ticker }) {
   if (!metrics) return null;
 
+  const isSample = metrics.source === 'Sample data';
+  const hasData = metrics.revenue !== null || metrics.growth_yoy !== null || metrics.gross_margin !== null;
+
   const sentimentColor =
     sentiment?.includes('Strong') || sentiment?.includes('Positive')
       ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -23,12 +26,18 @@ export default function MetricsScorecard({ metrics, sentiment, ticker }) {
           <span className="text-xs uppercase font-bold tracking-wider text-slate-800">
             Key Financial Indicators
           </span>
-          <span className="text-[10px] bg-blue-50 text-[#01257D] border border-blue-200 px-2 py-0.5 rounded font-mono font-bold shadow-xs">
-            SEC 10-K / 10-Q Derived
-          </span>
+          {isSample ? (
+            <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded font-mono font-bold shadow-xs">
+              Sample data
+            </span>
+          ) : (
+            <span className="text-[10px] bg-blue-50 text-[#01257D] border border-blue-200 px-2 py-0.5 rounded font-mono font-bold shadow-xs">
+              {metrics.source || 'Filing Disclosures'}
+            </span>
+          )}
           <InfoTooltip
-            title="SEC Ground Truth"
-            text="Metrics parsed strictly from audited annual (10-K) or quarterly (10-Q) filings, preventing hallucinations."
+            title="Grounded Disclosures"
+            text="Financial metrics extracted directly from filing notes or market statements without algorithmic extrapolation."
           />
         </div>
 
@@ -41,10 +50,6 @@ export default function MetricsScorecard({ metrics, sentiment, ticker }) {
               <Sparkles className="h-3 w-3 text-[#01257D]" />
               <span>{sentiment}</span>
             </span>
-            <InfoTooltip
-              title="Algorithmic Sentiment"
-              text="Qualitative outlook derived by cross-referencing revenue momentum against legal and operational risk disclosures."
-            />
           </div>
         )}
       </div>
@@ -55,11 +60,11 @@ export default function MetricsScorecard({ metrics, sentiment, ticker }) {
           <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
             <div className="flex items-center gap-1.5">
               <DollarSign className="h-3.5 w-3.5 text-[#01257D]" />
-              <span className="font-medium">Quarterly Revenue</span>
+              <span className="font-medium">Total Revenue</span>
             </div>
             <InfoTooltip
-              title="Quarterly Revenue"
-              text="Total audited gross revenue recognized by the company for the reported quarter."
+              title="Revenue"
+              text="Total revenue recognized for the reported period."
             />
           </div>
           <div className="flex items-baseline justify-between mt-1">
@@ -79,12 +84,12 @@ export default function MetricsScorecard({ metrics, sentiment, ticker }) {
             </div>
             <InfoTooltip
               title="Year-over-Year Growth"
-              text="Percentage increase in top-line revenue compared to the exact same quarter in the previous fiscal year."
+              text="Reported revenue growth relative to the comparable prior-year period."
             />
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="text-xl font-bold font-mono text-[#01257D]">
-              <AnimatedCounter value={metrics.growth_label || (metrics.growth_yoy ? `+${metrics.growth_yoy}%` : 'N/A')} />
+              <AnimatedCounter value={metrics.growth_label || (metrics.growth_yoy !== null && metrics.growth_yoy !== undefined ? (metrics.growth_yoy > 0 ? `+${metrics.growth_yoy}%` : `${metrics.growth_yoy}%`) : 'N/A')} />
             </div>
             <MiniSparkline trend={metrics.growth_yoy < 0 ? "down" : "up"} width={42} height={16} />
           </div>
@@ -99,12 +104,12 @@ export default function MetricsScorecard({ metrics, sentiment, ticker }) {
             </div>
             <InfoTooltip
               title="Gross Margin"
-              text="Gross profit divided by revenue. Indicates product pricing power after accounting for cost of goods sold."
+              text="Gross profit margin percentage as disclosed in the filings."
             />
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="text-xl font-bold font-mono text-[#01257D]">
-              <AnimatedCounter value={metrics.margin_label || (metrics.gross_margin ? `${metrics.gross_margin}%` : 'N/A')} />
+              <AnimatedCounter value={metrics.margin_label || (metrics.gross_margin !== null && metrics.gross_margin !== undefined ? `${metrics.gross_margin}%` : 'N/A')} />
             </div>
             <MiniSparkline trend="up" width={42} height={16} />
           </div>
@@ -115,21 +120,21 @@ export default function MetricsScorecard({ metrics, sentiment, ticker }) {
           <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 text-[#01257D]" />
-              <span className="font-medium">Primary Engine</span>
+              <span className="font-medium">Core Driver</span>
             </div>
             <InfoTooltip
-              title="Core Growth Driver"
-              text="The specific product, service, or business segment providing the majority of top-line revenue momentum."
+              title="Primary Segment"
+              text="Primary industry segment or technological catalyst contributing to operating revenue."
             />
           </div>
-          <div className="text-sm font-bold text-slate-900 truncate mt-1" title={metrics.primary_driver}>
-            {metrics.primary_driver || 'N/A'}
+          <div className="text-sm font-bold text-slate-900 truncate mt-1" title={metrics.primary_driver || 'Disclosed in Filing'}>
+            {metrics.primary_driver || (hasData ? 'Disclosed in Filing' : 'N/A')}
           </div>
         </div>
       </div>
 
       <div className="text-right text-[10px] text-slate-500 font-mono mt-3">
-        Audited SEC Disclosure Verification &bull; Cosine Match 94.2%
+        Grounded Financial Extraction &bull; Disclosed Filing Metrics
       </div>
     </div>
   );

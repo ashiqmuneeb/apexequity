@@ -13,7 +13,7 @@ export default function AnimatedCounter({ value, duration = 800, className = '' 
       return;
     }
 
-    // Extract numbers, decimals, and surrounding text (e.g., "$22.1B", "+265%", "76.0%")
+    // Extract numbers, decimals, and surrounding text (e.g., "$100M", "+15%", "50.0%")
     const str = String(value);
     const match = str.match(/([^\d.-]*)([\d.-]+)([^\d.-]*)/);
 

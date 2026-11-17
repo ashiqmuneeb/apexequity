@@ -1,4 +1,3 @@
-from typing import List, Optional
 from fastapi import HTTPException
 
 from app.core.logger import logger
@@ -8,16 +7,20 @@ from app.schemas.analysis import (
     CustomQueryResponse,
     SourceEvidenceNode,
 )
+from app.services.metrics_service import metrics_service
 from app.services.rag_engine import rag_engine_service
 
 
 class AnalysisService:
-    """Orchestrates financial research inquiries, comparative evaluations, and custom queries."""
+    """Orchestrates financial research inquiries, comparative evaluations, and custom queries.
+
+    Uses metrics_service for grounded data and rag_engine_service for grounded citation RAG.
+    """
 
     @staticmethod
-    def _extract_sources(response) -> List[SourceEvidenceNode]:
+    def _extract_sources(response) -> list[SourceEvidenceNode]:
         """Extracts source node snippets, relevance scores, and metadata from RAG response."""
-        sources: List[SourceEvidenceNode] = []
+        sources: list[SourceEvidenceNode] = []
         if hasattr(response, "source_nodes"):
             for node in response.source_nodes:
                 text = node.node.get_text()
@@ -31,114 +34,31 @@ class AnalysisService:
                 )
         return sources
 
-    @staticmethod
-    def _extract_metrics(ticker: str) -> dict:
-        """Returns structured benchmark metrics for visual chart rendering."""
-        benchmarks = {
-            "NVDA": {
-                "revenue": 22.1,
-                "revenue_label": "$22.1B",
-                "growth_yoy": 265,
-                "growth_label": "+265%",
-                "gross_margin": 76.0,
-                "margin_label": "76.0%",
-                "primary_driver": "H100 Tensor GPUs & Hopper",
-                "cloud_ai_revenue": "$18.4B (Data Center)",
-                "sentiment": "Strong Bullish",
-            },
-            "GOOGL": {
-                "revenue": 86.3,
-                "revenue_label": "$86.3B",
-                "growth_yoy": 13,
-                "growth_label": "+13%",
-                "gross_margin": 56.5,
-                "margin_label": "56.5%",
-                "primary_driver": "Search & YouTube Ads",
-                "cloud_ai_revenue": "$9.19B (Google Cloud)",
-                "sentiment": "Moderate Bullish",
-            },
-            "AAPL": {
-                "revenue": 119.6,
-                "revenue_label": "$119.6B",
-                "growth_yoy": 2,
-                "growth_label": "+2%",
-                "gross_margin": 45.9,
-                "margin_label": "45.9%",
-                "primary_driver": "iPhone 15 & Services",
-                "cloud_ai_revenue": "Apple Intelligence & Silicon",
-                "sentiment": "Neutral / Steady",
-            },
-            "MSFT": {
-                "revenue": 62.0,
-                "revenue_label": "$62.0B",
-                "growth_yoy": 18,
-                "growth_label": "+18%",
-                "gross_margin": 68.4,
-                "margin_label": "68.4%",
-                "primary_driver": "Azure Cloud & Copilot",
-                "cloud_ai_revenue": "$33.7B (Microsoft Cloud)",
-                "sentiment": "Strong Bullish",
-            },
-        }
-        clean = ticker.upper()
-        if clean in benchmarks:
-            return benchmarks[clean]
-
-        # Dynamic fallback to yfinance for any stock in the world
-        try:
-            import yfinance as yf
-            t = yf.Ticker(clean)
-            info = t.info
-            rev = info.get("totalRevenue")
-            rev_val = round(rev / 1e9, 1) if rev else None
-            growth = info.get("revenueGrowth")
-            growth_val = round(growth * 100, 1) if growth is not None else None
-            gm = info.get("grossMargins")
-            gm_val = round(gm * 100, 1) if gm is not None else None
-
-            return {
-                "revenue": rev_val,
-                "revenue_label": f"${rev_val}B" if rev_val else "N/A",
-                "growth_yoy": growth_val,
-                "growth_label": f"{growth_val:+}%" if growth_val is not None else "N/A",
-                "gross_margin": gm_val,
-                "margin_label": f"{gm_val}%" if gm_val is not None else "N/A",
-                "primary_driver": info.get("industry") or "Corporate Operations",
-                "cloud_ai_revenue": f"Market Cap: ${round(info.get('marketCap', 0) / 1e9, 1)}B",
-                "sentiment": "Moderate Bullish" if (growth_val or 0) > 0 else "Neutral",
-            }
-        except Exception:
-            return {
-                "revenue": None,
-                "revenue_label": "N/A",
-                "growth_yoy": None,
-                "growth_label": "N/A",
-                "gross_margin": None,
-                "margin_label": "N/A",
-                "primary_driver": "Extracted from filing",
-                "cloud_ai_revenue": "See report context",
-                "sentiment": "Bullish",
-            }
-
     def analyze_single_stock(
         self,
         ticker: str,
-        custom_prompt: Optional[str] = None,
-        groq_api_key: Optional[str] = None,
+        custom_prompt: str | None = None,
+        groq_api_key: str | None = None,
     ) -> AnalysisResponse:
-        """Executes a deep-dive financial analysis for a single stock."""
+        """Executes a deep-dive financial analysis for a single stock with ticker filtering."""
         clean_ticker = ticker.strip().upper()
         if not clean_ticker:
-            raise HTTPException(status_code=400, detail="Stock ticker symbol is required.")
+            raise HTTPException(
+                status_code=400, detail="Stock ticker symbol is required."
+            )
 
-        engine = rag_engine_service.get_query_engine(override_key=groq_api_key)
+        # Apply ticker metadata filter to prevent cross-stock contamination
+        engine = rag_engine_service.get_query_engine(
+            override_key=groq_api_key,
+            ticker=clean_ticker,
+        )
 
         prompt = (
             custom_prompt.strip()
             if custom_prompt and custom_prompt.strip()
             else (
-                f"Generate a comprehensive financial analysis report for ticker {clean_ticker}. "
-                "Highlight revenue trajectory, growth drivers, cloud/AI positioning, and risk factors "
+                f"Generate an institutional financial analysis report for ticker {clean_ticker}. "
+                "Evaluate revenue trajectory, core operating drivers, cloud/AI positioning, and risk factors "
                 "based strictly on the retrieved context."
             )
         )
@@ -146,32 +66,40 @@ class AnalysisService:
         try:
             logger.info(f"Executing single stock query for: {clean_ticker}")
             response = engine.query(prompt)
-            metrics = self._extract_metrics(clean_ticker)
+            metrics = metrics_service.get_metrics(clean_ticker)
 
             return AnalysisResponse(
                 ticker=clean_ticker,
                 prompt=prompt,
                 report=str(response),
-                sentiment=metrics.get("sentiment", "Bullish"),
+                sentiment=metrics.get("sentiment"),
                 metrics=metrics,
                 sources=self._extract_sources(response),
+                is_sample=False,
             )
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Single stock analysis query failed: {e}")
-            raise HTTPException(status_code=500, detail=f"Analysis query failed: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Analysis query failed: {str(e)}"
+            )
 
     def compare_stocks(
         self,
         stock_a: str,
         stock_b: str,
-        custom_prompt: Optional[str] = None,
-        groq_api_key: Optional[str] = None,
+        custom_prompt: str | None = None,
+        groq_api_key: str | None = None,
     ) -> ComparisonResponse:
         """Executes a comparative head-to-head analysis between two stocks."""
         clean_a = stock_a.strip().upper()
         clean_b = stock_b.strip().upper()
         if not clean_a or not clean_b:
-            raise HTTPException(status_code=400, detail="Both stock tickers are required for comparison.")
+            raise HTTPException(
+                status_code=400,
+                detail="Both stock tickers are required for comparison.",
+            )
 
         engine = rag_engine_service.get_query_engine(override_key=groq_api_key)
 
@@ -186,27 +114,29 @@ class AnalysisService:
         )
 
         try:
-            logger.info(f"Executing comparative analysis between {clean_a} and {clean_b}")
+            logger.info(
+                f"Executing comparative analysis between {clean_a} and {clean_b}"
+            )
             response = engine.query(prompt)
 
-            meta_a = self._extract_metrics(clean_a)
-            meta_b = self._extract_metrics(clean_b)
+            meta_a = metrics_service.get_metrics(clean_a)
+            meta_b = metrics_service.get_metrics(clean_b)
 
             comparison_chart_data = [
                 {
                     "metric": "Revenue ($B)",
-                    clean_a: meta_a.get("revenue") or 0,
-                    clean_b: meta_b.get("revenue") or 0,
+                    clean_a: meta_a.get("revenue"),
+                    clean_b: meta_b.get("revenue"),
                 },
                 {
                     "metric": "YoY Growth (%)",
-                    clean_a: meta_a.get("growth_yoy") or 0,
-                    clean_b: meta_b.get("growth_yoy") or 0,
+                    clean_a: meta_a.get("growth_yoy"),
+                    clean_b: meta_b.get("growth_yoy"),
                 },
                 {
                     "metric": "Gross Margin (%)",
-                    clean_a: meta_a.get("gross_margin") or 0,
-                    clean_b: meta_b.get("gross_margin") or 0,
+                    clean_a: meta_a.get("gross_margin"),
+                    clean_b: meta_b.get("gross_margin"),
                 },
             ]
 
@@ -217,20 +147,27 @@ class AnalysisService:
                 report=str(response),
                 comparison_metrics=comparison_chart_data,
                 sources=self._extract_sources(response),
+                is_sample=False,
             )
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Comparative analysis query failed: {e}")
-            raise HTTPException(status_code=500, detail=f"Comparative analysis failed: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Comparative analysis failed: {str(e)}"
+            )
 
     def custom_query(
         self,
         prompt: str,
-        groq_api_key: Optional[str] = None,
+        groq_api_key: str | None = None,
     ) -> CustomQueryResponse:
         """Executes a free-form semantic query across the financial corpus."""
         clean_prompt = prompt.strip()
         if not clean_prompt:
-            raise HTTPException(status_code=400, detail="Query prompt cannot be empty.")
+            raise HTTPException(
+                status_code=400, detail="Query prompt cannot be empty."
+            )
 
         engine = rag_engine_service.get_query_engine(override_key=groq_api_key)
 
@@ -242,10 +179,11 @@ class AnalysisService:
                 report=str(response),
                 sources=self._extract_sources(response),
             )
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Custom query failed: {e}")
             raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
 
 
 analysis_service = AnalysisService()
-

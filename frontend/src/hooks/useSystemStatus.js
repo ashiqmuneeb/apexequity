@@ -24,11 +24,6 @@ export function useSystemStatus() {
     fetchStatus();
   }, [fetchStatus]);
 
-  const saveGroqKey = async (newKey) => {
-    await systemApi.saveGroqKey(newKey);
-    await fetchStatus();
-  };
-
   const rebuildIndex = async () => {
     setIsRebuilding(true);
     setRebuildFeedback(null);
@@ -58,8 +53,6 @@ export function useSystemStatus() {
     isRebuilding,
     rebuildFeedback,
     fetchStatus,
-    saveGroqKey,
     rebuildIndex,
   };
 }
-

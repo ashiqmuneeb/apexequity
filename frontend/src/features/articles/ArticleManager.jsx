@@ -85,13 +85,13 @@ export default function ArticleManager({ onRebuildIndex, isRebuilding, onCorpusC
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Folder className="h-4.5 w-4.5 text-[#01257D]" />
-            <span>SEC Filing Library</span>
+            <span>Financial Document Library</span>
             <span className="text-[11px] font-bold text-[#01257D] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 shadow-xs">
               {articles.length} Indexed
             </span>
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            10-K disclosures, balance sheets, and reports vectorized into local CPU storage.
+            Filing disclosures, balance sheets, and reports vectorized into local storage.
           </p>
         </div>
 
@@ -124,7 +124,7 @@ export default function ArticleManager({ onRebuildIndex, isRebuilding, onCorpusC
               <h3 className="text-sm font-bold text-slate-900">Live Stock Ingestion</h3>
             </div>
             <p className="text-xs text-slate-600">
-              Fetch audited financials and corporate filings for any US public equity.
+              Fetch market overview and corporate financials for any US public equity.
             </p>
           </div>
 

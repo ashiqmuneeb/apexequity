@@ -10,13 +10,13 @@ export default function OnboardingModal({ isOpen, onClose, onLaunchDemo }) {
     {
       stepNumber: 1,
       badge: 'Step 1: Document Grounding',
-      title: 'Audited Corporate Filings & Live SEC Ingestion',
+      title: 'Corporate Filings & Market Ingestion',
       icon: FileText,
       color: 'text-[#01257D] bg-blue-50 border-blue-200 shadow-xs',
       description:
-        'Instead of asking generic AI models that guess or hallucinate numbers, ApexEquity ingests official SEC Form 10-K annual reports and Form 10-Q quarterly statements directly into a local knowledge vault.',
+        'Instead of asking generic AI models that guess or hallucinate numbers, ApexEquity ingests verified corporate reports, financial statements, and filing notes directly into a local knowledge vault.',
       bullets: [
-        'Stores verified balance sheets, income statements, and auditor footnotes.',
+        'Stores verified balance sheets, income statements, and footnotes.',
         'Integrates 1-click live market ingestion via Yahoo Finance for any public US stock symbol.',
         'Completely private: filings remain stored on your machine with zero third-party exposure.',
       ],
@@ -31,11 +31,11 @@ export default function OnboardingModal({ isOpen, onClose, onLaunchDemo }) {
       description:
         'Every filing is partitioned into contextual text chunks and converted into dense mathematical coordinates using the BAAI/bge-small-en-v1.5 embedding model running locally on your CPU.',
       bullets: [
-        'When you select a ticker or ask a question, Cosine Similarity finds the top-3 matching passages in under 50 milliseconds.',
+        'When you select a ticker or ask a question, semantic similarity finds the top matching passages.',
         'Runs 100% locally: zero per-query API bills and works even without internet for vector search.',
         'Automatically avoids redundant re-indexing through persistent StorageContext caching.',
       ],
-      tip: 'Pro Tip: Notice the "Audited Citations" at the bottom of every report showing the exact source paragraphs used.',
+      tip: 'Pro Tip: Notice the "Context Citations" at the bottom of every report showing the exact source paragraphs used.',
     },
     {
       stepNumber: 3,

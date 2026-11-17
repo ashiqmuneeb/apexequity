@@ -7,18 +7,19 @@ from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.logger import logger
 
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="Enterprise RAG Engine for Financial Stock Analysis with LlamaIndex & Groq",
 )
 
-# Cross-Origin Resource Sharing
+# Cross-Origin Resource Sharing with explicit allowlist from env
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
 )
 
@@ -54,4 +55,3 @@ if __name__ == "__main__":
 
     logger.info(f"Starting server on http://{settings.HOST}:{settings.PORT}")
     uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=True)
-

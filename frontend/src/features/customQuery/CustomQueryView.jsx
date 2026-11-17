@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HelpCircle, Sparkles, Copy, Check, ChevronDown, ChevronUp, FileText, Cpu, ShieldAlert, Activity, ArrowUpRight } from 'lucide-react';
+import { HelpCircle, Sparkles, Copy, Check, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { analysisApi } from '../../api/analysisApi';
 import MarkdownView from '../../components/common/MarkdownView';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
@@ -37,23 +37,10 @@ export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '' }) 
     }
   };
 
-  const handleRunPreset = async (queryText) => {
-    setPrompt(queryText);
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await analysisApi.customQuery(queryText);
-      setResult(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCopy = () => {
     if (!result?.report) return;
-    navigator.clipboard.writeText(result.report);
+    const textToCopy = `${result.report}\n\n*ApexEquity is for informational and educational research purposes only. Not investment advice.*`;
+    navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -67,11 +54,11 @@ export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '' }) 
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <span>Ask AI Assistant</span>
             <span className="text-[11px] font-bold text-[#01257D] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 shadow-xs">
-              Whole SEC Corpus
+              Document Corpus
             </span>
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Query across the full indexed library of Form 10-K disclosures, balance sheets, and management commentary.
+            Query across the full indexed library of financial disclosures, balance sheets, and management commentary.
           </p>
         </div>
 
@@ -118,7 +105,7 @@ export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '' }) 
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 text-cyan-200" />
-                  <span>Ask AI</span>
+                  <span>Execute Inquiry</span>
                 </>
               )}
             </button>
@@ -126,106 +113,18 @@ export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '' }) 
         </form>
       </div>
 
-      {/* Error Card */}
-      <ErrorCard
-        title="Query Error"
-        message={error}
-        onConfigureKey={onOpenKeyModal}
-      />
+      {/* Error Presentation */}
+      {error && (
+        <ErrorCard
+          title="Inquiry Execution Error"
+          message={error}
+          onRetry={handleQuery}
+          onOpenKeyModal={onOpenKeyModal}
+        />
+      )}
 
       {/* Loading Skeleton */}
-      {loading && <LoadingSkeleton text="Synthesizing multi-filing evidence across institutional corpus..." />}
-
-      {/* Initial Empty State: Clean Suggested Inquiries */}
-      {!result && !loading && (
-        <div className="space-y-4 animate-fade-in">
-          <div className="pt-2">
-            <h3 className="text-base font-bold text-slate-900 tracking-tight">
-              Macro Research Topics
-            </h3>
-            <p className="text-xs text-slate-600">
-              Run multi-company vector retrieval across all filed Form 10-K disclosures.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="terminal-card bg-white border border-slate-200 hover:border-[#01257D]/50 hover:shadow-lg rounded-xl p-5 transition flex flex-col justify-between group shadow-xs">
-              <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[10px] font-bold text-[#01257D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                    Hardware & Cloud
-                  </span>
-                  <Cpu className="h-4 w-4 text-slate-400" />
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 group-hover:text-[#01257D] transition mb-1.5">
-                  Hyperscale CapEx Cycle
-                </h4>
-                <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                  Aggregates disclosures across NVIDIA, Google, and Microsoft regarding AI infrastructure spend and chip orders.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleRunPreset(SAMPLE_QUESTIONS[2])}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-blue-50 hover:bg-[#01257D] text-[#01257D] hover:text-white border border-blue-200 text-xs font-semibold transition cursor-pointer shadow-xs"
-              >
-                <span>Analyze CapEx</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            <div className="terminal-card bg-white border border-slate-200 hover:border-[#01257D]/50 hover:shadow-lg rounded-xl p-5 transition flex flex-col justify-between group shadow-xs">
-              <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                    Legal & Antitrust
-                  </span>
-                  <ShieldAlert className="h-4 w-4 text-rose-500" />
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 group-hover:text-rose-600 transition mb-1.5">
-                  Antitrust & Export Controls
-                </h4>
-                <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                  Surfaces all legal proceedings, Department of Justice inquiries, and export restrictions across covered firms.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleRunPreset(SAMPLE_QUESTIONS[1])}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 text-xs font-semibold transition cursor-pointer shadow-xs"
-              >
-                <span>Audit Risks</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            <div className="terminal-card bg-white border border-slate-200 hover:border-[#01257D]/50 hover:shadow-lg rounded-xl p-5 transition flex flex-col justify-between group shadow-xs">
-              <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[10px] font-bold text-[#01257D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                    Cloud Infrastructure
-                  </span>
-                  <Activity className="h-4 w-4 text-slate-400" />
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 group-hover:text-[#01257D] transition mb-1.5">
-                  Cloud Revenue Growth
-                </h4>
-                <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                  Contrasts Google Cloud and Microsoft Azure revenue expansion, operating profit, and enterprise adoption.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleRunPreset(SAMPLE_QUESTIONS[0])}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-blue-50 hover:bg-[#01257D] text-[#01257D] hover:text-white border border-blue-200 text-xs font-semibold transition cursor-pointer shadow-xs"
-              >
-                <span>Compare Cloud</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {loading && <LoadingSkeleton text="Scanning vector storage & synthesizing cited answers from disclosures..." />}
 
       {/* Result Presentation Card */}
       {result && !loading && (
@@ -248,6 +147,10 @@ export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '' }) 
 
           <div className="p-6 sm:p-8">
             <MarkdownView content={result.report} />
+
+            <div className="pt-4 border-t border-slate-100 text-[11px] text-slate-500 text-center mt-4">
+              ApexEquity is for informational and educational research purposes only and does not constitute financial, legal, or investment advice.
+            </div>
           </div>
 
           {/* Sources Section */}
@@ -260,7 +163,7 @@ export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '' }) 
               >
                 <div className="flex items-center gap-2">
                   <FileText className="h-3.5 w-3.5 text-[#01257D]" />
-                  <span>Audited Filing Citations ({result.sources.length} Verified Sources)</span>
+                  <span>Context Evidence Passages ({result.sources.length} Verified Sources)</span>
                 </div>
                 {showSources ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
@@ -270,10 +173,10 @@ export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '' }) 
                   {result.sources.map((src, i) => (
                     <div key={i} className="p-3.5 rounded-xl bg-white border border-slate-200 text-xs space-y-1.5 shadow-xs">
                       <div className="flex items-center justify-between text-slate-500">
-                        <span className="font-mono text-[#01257D] font-bold">SEC Disclosure Excerpt #{i + 1}</span>
-                        {src.score && (
+                        <span className="font-mono text-[#01257D] font-bold">Disclosure Excerpt #{i + 1}</span>
+                        {src.score != null && (
                           <span className="text-[11px] text-[#01257D] font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-bold">
-                            Confidence Match: {(src.score * 100).toFixed(1)}%
+                            Score: {src.score.toFixed(3)}
                           </span>
                         )}
                       </div>

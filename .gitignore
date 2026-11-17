@@ -1,11 +1,29 @@
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
 backend/venv/
-backend/.env
+venv/
+.pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
 
-# Node
+# Storage & Data
+storage/
+backend/storage/
+data/
+backend/data/
+
+# Environment & Secrets
+.env
+backend/.env
+.env.local
+
+# Node & Frontend
 node_modules/
+frontend/node_modules/
+dist/
 frontend/dist/
 frontend/.vite/
 
@@ -17,4 +35,3 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
-

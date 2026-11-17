@@ -18,10 +18,10 @@ def test_system_status(client):
     assert "indexed_articles_count" in data
     assert "models" in data
     assert "Groq" in data["models"]["llm"]
+    assert "HuggingFace" in data["models"]["embedding"]
 
 
-def test_key_config_validation(client):
-    """Verifies that empty API key payloads are rejected."""
+def test_config_key_endpoint_is_removed(client):
+    """Verifies that the secret-writing endpoint POST /config/key is eliminated."""
     response = client.post("/api/v1/config/key", json={"groq_api_key": "   "})
-    assert response.status_code == 400
-
+    assert response.status_code in (404, 405)

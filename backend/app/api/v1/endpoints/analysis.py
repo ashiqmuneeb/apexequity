@@ -3,13 +3,14 @@ from fastapi import APIRouter, Depends
 from app.api.deps import get_analysis_service
 from app.schemas.analysis import (
     AnalysisResponse,
-    ComparisonResponse,
     CompareStockRequest,
+    ComparisonResponse,
     CustomQueryRequest,
     CustomQueryResponse,
     SingleStockRequest,
 )
 from app.services.analysis_service import AnalysisService
+
 
 router = APIRouter(prefix="/analyze", tags=["Financial Analysis"])
 

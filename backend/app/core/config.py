@@ -1,24 +1,29 @@
 import os
 from pathlib import Path
-from typing import Optional
-from dotenv import load_dotenv
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 # Base filesystem resolution
 # backend/app/core/config.py -> parents[2] is backend/
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 ENV_PATH = BACKEND_DIR / ".env"
 
-load_dotenv(ENV_PATH)
 
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_PATH),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
-class Settings:
     PROJECT_NAME: str = "Financial Stock Analysis Engine"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
 
     # Server configuration
-    HOST: str = os.getenv("HOST", "127.0.0.1")
-    PORT: int = int(os.getenv("PORT", 8000))
+    HOST: str = "127.0.0.1"
+    PORT: int = 8000
 
     # Core Directories
     BACKEND_PATH: Path = BACKEND_DIR
@@ -27,47 +32,43 @@ class Settings:
     FRONTEND_DIST_DIR: Path = BACKEND_DIR.parent / "frontend" / "dist"
     ENV_FILE_PATH: Path = ENV_PATH
 
-    # AI Models
-    DEFAULT_GROQ_MODEL: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+    # AI Models & Retrieval Hyperparameters
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
+    GROQ_FALLBACK_MODEL: str = "llama-3.3-70b-versatile"
+    DEFAULT_GROQ_MODEL: str = "openai/gpt-oss-120b"
     DEFAULT_EMBED_MODEL: str = "BAAI/bge-small-en-v1.5"
+    TEMPERATURE: float = 0.1
+    CHUNK_SIZE: int = 512
+    CHUNK_OVERLAP: int = 50
     SIMILARITY_TOP_K: int = 3
 
-    @classmethod
-    def get_groq_api_key(cls, override_key: Optional[str] = None) -> Optional[str]:
-        """Resolves active Groq API Key from override, memory, or .env."""
+    # Security & CORS
+    ALLOWED_ORIGINS: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
+    )
+    ADMIN_API_KEY: str = "dev-admin-key"
+
+    def get_allowed_origins(self) -> list[str]:
+        """Parses comma-separated allowed origins into a clean string list."""
+        if not self.ALLOWED_ORIGINS:
+            return ["http://localhost:5173", "http://127.0.0.1:5173"]
+        return [
+            origin.strip()
+            for origin in self.ALLOWED_ORIGINS.split(",")
+            if origin.strip()
+        ]
+
+    def get_groq_api_key(self, override_key: str | None = None) -> str | None:
+        """Resolves active Groq API Key from per-request override or environment."""
         key = (override_key or "").strip()
         if not key:
-            key = os.getenv("GROQ_API_KEY", "").strip()
+            key = (self.GROQ_API_KEY or os.getenv("GROQ_API_KEY", "")).strip()
         if key and key != "your_free_groq_api_key_here":
             return key
         return None
 
-    @classmethod
-    def set_groq_api_key(cls, new_key: str) -> None:
-        """Sets Groq API key in process environment and persists to .env."""
-        clean_key = new_key.strip()
-        os.environ["GROQ_API_KEY"] = clean_key
-
-        lines = []
-        if cls.ENV_FILE_PATH.exists():
-            with open(cls.ENV_FILE_PATH, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-
-        found = False
-        new_lines = []
-        for line in lines:
-            if line.startswith("GROQ_API_KEY="):
-                new_lines.append(f"GROQ_API_KEY={clean_key}\n")
-                found = True
-            else:
-                new_lines.append(line)
-
-        if not found:
-            new_lines.append(f"GROQ_API_KEY={clean_key}\n")
-
-        with open(cls.ENV_FILE_PATH, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
-
 
 settings = Settings()
-
+# Ensure backwards compatibility for references to DEFAULT_GROQ_MODEL
+settings.DEFAULT_GROQ_MODEL = settings.GROQ_MODEL

@@ -1,3 +1,6 @@
+from app.core.config import settings
+
+
 def test_list_articles(client):
     """Verifies that the article listing endpoint returns indexed files."""
     response = client.get("/api/v1/articles")
@@ -16,7 +19,8 @@ def test_list_articles(client):
 
 
 def test_save_and_delete_article(client):
-    """Verifies creating and deleting an article document."""
+    """Verifies creating and deleting an article document using admin authentication."""
+    headers = {"X-API-Key": settings.ADMIN_API_KEY}
     test_ticker = "TESTXYZ"
     test_content = "This is a temporary test financial summary for unit testing."
 
@@ -24,18 +28,24 @@ def test_save_and_delete_article(client):
     save_resp = client.post(
         "/api/v1/articles",
         json={"ticker": test_ticker, "content": test_content},
+        headers=headers,
     )
     assert save_resp.status_code == 200
     assert "saved successfully" in save_resp.json()["message"]
 
     # 2. Delete article
-    del_resp = client.delete(f"/api/v1/articles/{test_ticker}")
+    del_resp = client.delete(
+        f"/api/v1/articles/{test_ticker}",
+        headers=headers,
+    )
     assert del_resp.status_code == 200
     assert "deleted successfully" in del_resp.json()["message"]
 
 
 def test_fetch_live_stock_validation(client):
     """Verifies that empty ticker requests to live fetch are rejected."""
-    resp = client.post("/api/v1/articles/fetch-live", json={"ticker": ""})
+    headers = {"X-API-Key": settings.ADMIN_API_KEY}
+    resp = client.post(
+        "/api/v1/articles/fetch-live", json={"ticker": ""}, headers=headers
+    )
     assert resp.status_code == 400
-

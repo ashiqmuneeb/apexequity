@@ -1,21 +1,21 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Virtual Environments
 venv/
-env/
-ENV/
+.pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
 
-# Environment files
-.env
-!.env.example
-
-# Storage / cache (optional - vector store files can be excluded or kept)
+# Storage & Data
 storage/
+data/
 
-# Editor directories
+# Environment & Secrets
+.env
+.env.local
+
+# Editor
 .vscode/
 .idea/
-

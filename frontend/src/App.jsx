@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Header from './components/common/Header';
-import StatusBanner from './components/common/StatusBanner';
+import Footer from './components/layout/Footer';
 import ApiKeyModal from './components/common/ApiKeyModal';
+import FinancialBackground from './components/common/FinancialBackground';
+import StatusBanner from './components/common/StatusBanner';
+import TabNavigation from './components/layout/TabNavigation';
 import OnboardingModal from './components/common/OnboardingModal';
 import CommandPalette from './components/common/CommandPalette';
-import TickerTape from './components/common/TickerTape';
-import FinancialBackground from './components/common/FinancialBackground';
-import TabNavigation from './components/layout/TabNavigation';
-import Footer from './components/layout/Footer';
 import SingleStockView from './features/singleStock/SingleStockView';
 import ComparisonView from './features/comparison/ComparisonView';
 import CustomQueryView from './features/customQuery/CustomQueryView';
@@ -17,39 +16,10 @@ import { TABS } from './constants/stockTickers';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(TABS.SINGLE);
+  const [selectedTicker, setSelectedTicker] = useState('NVDA');
+  const [customInitialPrompt, setCustomInitialPrompt] = useState('');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [customQueryInitialPrompt, setCustomQueryInitialPrompt] = useState('');
-
-  // Global Ctrl+K / Cmd+K shortcut listener
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsCommandPaletteOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Check if first-time visitor
-  useEffect(() => {
-    const hasVisited = localStorage.getItem('apex_onboarding_seen');
-    if (!hasVisited) {
-      setIsOnboardingOpen(true);
-    }
-  }, []);
-
-  const handleCloseOnboarding = () => {
-    setIsOnboardingOpen(false);
-    localStorage.setItem('apex_onboarding_seen', 'true');
-  };
-
-  const handleNavigateCustom = (query) => {
-    setCustomQueryInitialPrompt(query);
-    setActiveTab(TABS.CUSTOM);
-  };
 
   const {
     status,
@@ -58,20 +28,29 @@ export default function App() {
     isRebuilding,
     rebuildFeedback,
     fetchStatus,
-    saveGroqKey,
     rebuildIndex,
   } = useSystemStatus();
+
+  const handleNavigateCustom = (presetPrompt) => {
+    setCustomInitialPrompt(presetPrompt);
+    setActiveTab(TABS.CUSTOM);
+  };
+
+  const handleCloseOnboarding = () => {
+    setIsOnboardingOpen(false);
+    localStorage.setItem('apexequity_tour_dismissed', 'true');
+  };
+
+  const handleSelectTicker = (ticker) => {
+    setSelectedTicker(ticker);
+    setActiveTab(TABS.SINGLE);
+  };
 
   return (
     <div className="finance-bg relative min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col font-sans overflow-x-hidden">
       
       {/* Dynamic Ambient Financial Chart & Glow Waves */}
       <FinancialBackground />
-
-      {/* Financial Market Ticker Ribbon */}
-      <div className="relative z-20">
-        <TickerTape onSelectTicker={(ticker) => setActiveTab(TABS.SINGLE)} />
-      </div>
 
       {/* Top Header */}
       <div className="relative z-20">
@@ -95,13 +74,13 @@ export default function App() {
         />
       </div>
 
-      {/* Floating Rebuild Alert */}
+      {/* Floating Rebuild Alert with accessible contrast */}
       {rebuildFeedback && (
         <div
-          className={`relative z-20 py-2 px-4 text-center text-xs font-semibold ${
+          className={`relative z-20 py-2.5 px-4 text-center text-xs font-semibold ${
             rebuildFeedback.type === 'success'
-              ? 'bg-emerald-500/20 text-emerald-300'
-              : 'bg-red-500/20 text-red-300'
+              ? 'bg-emerald-50 text-emerald-800 border-b border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border-b border-rose-200'
           }`}
         >
           {rebuildFeedback.text}
@@ -115,7 +94,7 @@ export default function App() {
         <TabNavigation
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          articleCount={status?.indexed_articles_count || 0}
+          articleCount={status?.indexed_articles_count ?? 0}
         />
 
         {/* Tab Views */}
@@ -123,6 +102,7 @@ export default function App() {
           {activeTab === TABS.SINGLE && (
             <SingleStockView
               availableTickers={status?.articles}
+              selectedTicker={selectedTicker}
               onOpenKeyModal={() => setIsKeyModalOpen(true)}
               onNavigateCustom={handleNavigateCustom}
             />
@@ -138,7 +118,7 @@ export default function App() {
           {activeTab === TABS.CUSTOM && (
             <CustomQueryView
               onOpenKeyModal={() => setIsKeyModalOpen(true)}
-              initialPrompt={customQueryInitialPrompt}
+              initialPrompt={customInitialPrompt}
             />
           )}
 
@@ -153,20 +133,16 @@ export default function App() {
 
       </main>
 
-      {/* Footer */}
-      <div className="relative z-20">
-        <Footer />
-      </div>
+      {/* Institutional Legal & Technical Footer */}
+      <Footer />
 
-      {/* Groq API Key Configuration Modal */}
+      {/* Global Modals */}
       <ApiKeyModal
         isOpen={isKeyModalOpen}
         onClose={() => setIsKeyModalOpen(false)}
-        onSaveKey={saveGroqKey}
         currentHasKey={status?.has_groq_key}
       />
 
-      {/* Starter Onboarding Modal */}
       <OnboardingModal
         isOpen={isOnboardingOpen}
         onClose={handleCloseOnboarding}
@@ -178,9 +154,7 @@ export default function App() {
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
         onSelectTab={setActiveTab}
-        onSelectTicker={(ticker) => {
-          setActiveTab(TABS.SINGLE);
-        }}
+        onSelectTicker={handleSelectTicker}
         onLaunchDemo={() => setActiveTab(TABS.SINGLE)}
         onOpenKeyModal={() => setIsKeyModalOpen(true)}
         onRebuildIndex={rebuildIndex}

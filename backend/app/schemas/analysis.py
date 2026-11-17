@@ -1,38 +1,53 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class SingleStockRequest(BaseModel):
     ticker: str = Field(..., description="Stock symbol (e.g. NVDA, GOOGL)")
-    custom_prompt: Optional[str] = Field(None, description="Optional custom prompt override")
-    groq_api_key: Optional[str] = Field(None, description="Optional per-request API key")
+    custom_prompt: str | None = Field(
+        None, description="Optional custom prompt override"
+    )
+    groq_api_key: str | None = Field(None, description="Optional per-request API key")
 
 
 class CompareStockRequest(BaseModel):
     stock_a: str = Field(..., description="Primary stock ticker")
     stock_b: str = Field(..., description="Benchmark/comparison stock ticker")
-    custom_prompt: Optional[str] = Field(None, description="Optional custom prompt override")
-    groq_api_key: Optional[str] = Field(None, description="Optional per-request API key")
+    custom_prompt: str | None = Field(
+        None, description="Optional custom prompt override"
+    )
+    groq_api_key: str | None = Field(None, description="Optional per-request API key")
 
 
 class CustomQueryRequest(BaseModel):
-    prompt: str = Field(..., description="Natural language question across the document corpus")
-    groq_api_key: Optional[str] = Field(None, description="Optional per-request API key")
+    prompt: str = Field(
+        ..., description="Natural language question across the document corpus"
+    )
+    groq_api_key: str | None = Field(None, description="Optional per-request API key")
 
 
 class SourceEvidenceNode(BaseModel):
-    score: Optional[float] = None
+    score: float | None = None
     text: str
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class AnalysisResponse(BaseModel):
     ticker: str
     prompt: str
     report: str
-    sentiment: Optional[str] = Field("Bullish", description="Overall sentiment classification")
-    metrics: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Structured financial metrics")
-    sources: List[SourceEvidenceNode] = Field(default_factory=list)
+    sentiment: str | None = Field(
+        None,
+        description="Sentiment classification derived from real data, otherwise null",
+    )
+    metrics: dict[str, Any] | None = Field(
+        None, description="Structured financial metrics or null"
+    )
+    sources: list[SourceEvidenceNode] = Field(default_factory=list)
+    is_sample: bool = Field(
+        False, description="Whether this response uses sample data"
+    )
 
 
 class ComparisonResponse(BaseModel):
@@ -40,14 +55,16 @@ class ComparisonResponse(BaseModel):
     stock_b: str
     prompt: str
     report: str
-    comparison_metrics: Optional[List[Dict[str, Any]]] = Field(
+    comparison_metrics: list[dict[str, Any]] = Field(
         default_factory=list, description="Side-by-side KPI comparison data for charts"
     )
-    sources: List[SourceEvidenceNode] = Field(default_factory=list)
+    sources: list[SourceEvidenceNode] = Field(default_factory=list)
+    is_sample: bool = Field(
+        False, description="Whether this response uses sample data"
+    )
 
 
 class CustomQueryResponse(BaseModel):
     prompt: str
     report: str
-    sources: List[SourceEvidenceNode] = Field(default_factory=list)
-
+    sources: list[SourceEvidenceNode] = Field(default_factory=list)

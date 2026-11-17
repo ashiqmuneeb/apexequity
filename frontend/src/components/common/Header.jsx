@@ -23,12 +23,12 @@ export default function Header({
               <span>Apex</span><span className="text-[#00A3C4]">Equity</span>
             </h1>
             <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-[#01257D] border border-blue-200 px-2.5 py-0.5 rounded-full hidden sm:inline-block shadow-xs">
-              SEC 10-K RAG
+              Filing Analysis RAG
             </span>
           </div>
         </div>
 
-        {/* Right: Clean, Uncluttered Actions */}
+        {/* Right: Actions */}
         <div className="flex items-center gap-2.5 shrink-0">
           
           {/* Quick Search Ctrl+K Button */}
@@ -61,7 +61,7 @@ export default function Header({
             type="button"
             onClick={onRebuildIndex}
             disabled={isRebuilding}
-            title="Re-index SEC filings vector database"
+            title="Re-index financial filings vector database"
             className="h-9 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 text-[#01257D] ${isRebuilding ? 'animate-spin' : ''}`} />

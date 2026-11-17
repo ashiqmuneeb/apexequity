@@ -22,7 +22,7 @@ export default function TabNavigation({ activeTab, onTabChange, articleCount = 0
     {
       id: TABS.ARTICLES,
       label: 'SEC Filings',
-      badge: articleCount || 4,
+      badge: articleCount ?? 0,
       icon: FolderKanban,
     },
   ];

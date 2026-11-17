@@ -3,6 +3,7 @@ Standalone CLI script to build and persist vector embeddings from ./articles int
 Run via: python index_data.py
 """
 import sys
+
 from app.core.logger import logger
 from app.services.article_service import article_service
 

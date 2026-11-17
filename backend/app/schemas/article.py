@@ -1,10 +1,11 @@
-from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
 class ArticlePayload(BaseModel):
     ticker: str = Field(..., description="Stock symbol associated with document")
-    content: str = Field(..., description="Financial statement, filing, or earnings notes")
+    content: str = Field(
+        ..., description="Financial statement, filing, or earnings notes"
+    )
 
 
 class ArticleItem(BaseModel):
@@ -16,7 +17,7 @@ class ArticleItem(BaseModel):
 
 
 class ArticleListResponse(BaseModel):
-    articles: List[ArticleItem]
+    articles: list[ArticleItem]
 
 
 class ArticleActionResponse(BaseModel):
@@ -25,7 +26,9 @@ class ArticleActionResponse(BaseModel):
 
 
 class FetchLiveStockRequest(BaseModel):
-    ticker: str = Field(..., description="Stock ticker symbol to pull live financials for")
+    ticker: str = Field(
+        ..., description="Stock ticker symbol to pull live financials for"
+    )
 
 
 class FetchLiveStockResponse(BaseModel):
@@ -33,7 +36,6 @@ class FetchLiveStockResponse(BaseModel):
     ticker: str
     filename: str
     company_name: str
-    market_cap: Optional[str] = None
-    revenue: Optional[str] = None
+    market_cap: str | None = None
+    revenue: str | None = None
     indexed_chunks: int
-

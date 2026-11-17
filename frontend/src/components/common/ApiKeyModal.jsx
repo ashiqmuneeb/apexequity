@@ -1,39 +1,8 @@
-import React, { useState } from 'react';
-import { Key, X, ExternalLink, Check, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { Key, X, ExternalLink, Check, ShieldCheck } from 'lucide-react';
 
-export default function ApiKeyModal({ isOpen, onClose, onSaveKey, currentHasKey }) {
-  const [apiKey, setApiKey] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState(null);
-  const [error, setError] = useState(null);
-
+export default function ApiKeyModal({ isOpen, onClose, currentHasKey }) {
   if (!isOpen) return null;
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!apiKey.trim()) {
-      setError('Please enter a valid Groq API key.');
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-    setMessage(null);
-
-    try {
-      await onSaveKey(apiKey.trim());
-      setMessage('Groq API Key saved successfully!');
-      setApiKey('');
-      setTimeout(() => {
-        onClose();
-        setMessage(null);
-      }, 1200);
-    } catch (err) {
-      setError(err.message || 'Failed to update Groq API key');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -52,77 +21,59 @@ export default function ApiKeyModal({ isOpen, onClose, onSaveKey, currentHasKey 
             <Key className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Groq API Key</h3>
-            <p className="text-xs text-slate-500">Powers sub-second Llama 3.3 70B financial inference</p>
+            <h3 className="text-base font-bold text-slate-900">Groq API Configuration</h3>
+            <p className="text-xs text-slate-500">Hardware-accelerated AI inference engine</p>
           </div>
         </div>
 
         <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-          Groq provides blazing-fast deterministic inference with a generous free tier. Get a key in 30 seconds from Groq Console.
+          For institutional security, API keys are managed exclusively via environment variables and are never written to disk from web endpoints.
         </p>
 
-        <a
-          href="https://console.groq.com/keys"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs text-[#01257D] hover:underline font-bold mb-4 group"
-        >
-          <span>Get Free Groq API Key</span>
-          <ExternalLink className="h-3 w-3 group-hover:translate-x-0.5 transition" />
-        </a>
-
-        {currentHasKey && (
-          <div className="mb-4 flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[#01257D] text-xs font-semibold">
-            <Check className="h-4 w-4 shrink-0 text-emerald-600" />
-            <span>A Groq API key is already configured on the server.</span>
+        {currentHasKey ? (
+          <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span>Groq API Key is active and loaded from the server environment (.env).</span>
+          </div>
+        ) : (
+          <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs space-y-1.5">
+            <div className="font-bold flex items-center gap-1.5">
+              <span>Key not found in server environment</span>
+            </div>
+            <p className="text-[11px] leading-relaxed">
+              Add your key to <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">backend/.env</code>:
+            </p>
+            <pre className="bg-slate-900 text-slate-100 p-2 rounded-lg text-[10px] font-mono select-all">
+              GROQ_API_KEY=gsk_your_key_here
+            </pre>
           </div>
         )}
 
-        {message && (
-          <div className="mb-4 flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs">
-            <Check className="h-4 w-4" />
-            <span>{message}</span>
-          </div>
-        )}
+        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-2 mb-4">
+          <span className="font-semibold text-slate-800 block">How to obtain a free key:</span>
+          <p className="text-[11px] leading-relaxed">
+            Groq provides deterministic inference with high rate limits on its developer free tier.
+          </p>
+          <a
+            href="https://console.groq.com/keys"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-[#01257D] hover:underline font-bold"
+          >
+            <span>Open Groq Cloud Console</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
 
-        {error && (
-          <div className="mb-4 flex items-center gap-2 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSave} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              API Key (gsk_...)
-            </label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxx"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#01257D]/30 focus:border-[#01257D] font-mono transition"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving || !apiKey.trim()}
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#01257D] via-[#0244c9] to-[#00A3C4] hover:opacity-95 transition shadow-sm disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-            >
-              {saving ? 'Saving...' : 'Save API Key'}
-            </button>
-          </div>
-        </form>
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#01257D] hover:bg-[#023b9c] transition shadow-xs cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
 
       </div>
     </div>

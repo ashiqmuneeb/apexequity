@@ -1,0 +1,13 @@
+{
+  "cik": "1045810",
+  "entityName": "NVIDIA CORP",
+  "filings": {
+    "recent": {
+      "accessionNumber": ["0001045810-24-000029", "0001045810-23-000085"],
+      "filingDate": ["2024-02-21", "2023-11-21"],
+      "reportDate": ["2024-01-28", "2023-10-29"],
+      "form": ["10-K", "10-Q"],
+      "primaryDocument": ["nvda-20240128.htm", "nvda-20231029.htm"]
+    }
+  }
+}

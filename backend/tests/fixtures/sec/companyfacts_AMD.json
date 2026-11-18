@@ -1,0 +1,49 @@
+{
+  "cik": 2488,
+  "entityName": "ADVANCED MICRO DEVICES INC",
+  "facts": {
+    "us-gaap": {
+      "RevenueFromContractWithCustomerExcludingAssessedTax": {
+        "label": "Net Sales",
+        "units": {
+          "USD": [
+            {
+              "end": "2022-12-31",
+              "val": 23601000000,
+              "fy": 2022,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2023-02-07",
+              "accn": "0000002488-23-000014"
+            },
+            {
+              "end": "2023-12-30",
+              "val": 22680000000,
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2024-01-31",
+              "accn": "0000002488-24-000012"
+            }
+          ]
+        }
+      },
+      "GrossProfit": {
+        "label": "Gross Profit",
+        "units": {
+          "USD": [
+            {
+              "end": "2023-12-30",
+              "val": 10446000000,
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2024-01-31",
+              "accn": "0000002488-24-000012"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

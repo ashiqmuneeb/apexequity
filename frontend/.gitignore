@@ -1,27 +1,28 @@
+# Secrets (keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+!.env.example
+!**/.env.example
+
+# Node & Build (anchored to frontend)
+/node_modules/
+/dist/
+/dist-ssr/
+
 # Logs
-logs
 *.log
+logs/
+/logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-.env
-.env.local
-.env.*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# OS / Editor files
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
 *.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.sw?

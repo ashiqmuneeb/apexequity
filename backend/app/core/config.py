@@ -29,8 +29,13 @@ class Settings(BaseSettings):
     BACKEND_PATH: Path = BACKEND_DIR
     ARTICLES_DIR: Path = BACKEND_DIR / "articles"
     STORAGE_DIR: Path = BACKEND_DIR / "storage"
+    SEC_CACHE_DIR: Path = BACKEND_DIR / "storage" / "sec_cache"
+    SEC_METRICS_FILE: Path = BACKEND_DIR / "storage" / "sec_metrics.json"
     FRONTEND_DIST_DIR: Path = BACKEND_DIR.parent / "frontend" / "dist"
     ENV_FILE_PATH: Path = ENV_PATH
+
+    # SEC EDGAR Integration
+    SEC_EDGAR_USER_AGENT: str | None = None
 
     # AI Models & Retrieval Hyperparameters
     GROQ_API_KEY: str = ""

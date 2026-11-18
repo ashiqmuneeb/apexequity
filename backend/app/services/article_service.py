@@ -27,12 +27,29 @@ class ArticleService:
         settings.ARTICLES_DIR.mkdir(parents=True, exist_ok=True)
         settings.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-    def _compute_hashes(self) -> dict[str, str]:
-        """Computes SHA256 hashes of all text and markdown files in the articles directory."""
-        hashes = {}
-        files = sorted(settings.ARTICLES_DIR.glob("*.txt")) + sorted(
+    def _get_indexable_files(self) -> list[Path]:
+        """Returns files to index.
+
+        Excludes AMD.txt (undated snapshot) from vector index if AMD_10K.txt exists (Requirement 4).
+        """
+        all_files = sorted(settings.ARTICLES_DIR.glob("*.txt")) + sorted(
             settings.ARTICLES_DIR.glob("*.md")
         )
+        has_amd_10k = any(f.name.upper().startswith("AMD_10K") for f in all_files)
+        indexable: list[Path] = []
+        for f in all_files:
+            if has_amd_10k and f.name.upper() == "AMD.TXT":
+                logger.info(
+                    "Excluding AMD.txt (undated Yahoo snapshot) from vector index because AMD_10K.txt exists."
+                )
+                continue
+            indexable.append(f)
+        return indexable
+
+    def _compute_hashes(self) -> dict[str, str]:
+        """Computes SHA256 hashes of indexable text and markdown files in articles directory."""
+        hashes = {}
+        files = self._get_indexable_files()
         for f in files:
             try:
                 content = f.read_bytes()
@@ -66,7 +83,7 @@ class ArticleService:
         for file in files:
             try:
                 content = file.read_text(encoding="utf-8")
-                ticker = file.stem.upper()
+                ticker = file.stem.split("_")[0].upper()
                 preview = content[:160] + "..." if len(content) > 160 else content
                 items.append(
                     ArticleItem(
@@ -206,11 +223,9 @@ class ArticleService:
         data_dir = settings.ARTICLES_DIR
         storage_dir = settings.STORAGE_DIR
 
-        files = sorted(
-            [f.name for f in data_dir.glob("*.txt")]
-            + [f.name for f in data_dir.glob("*.md")]
-        )
-        if not files:
+        indexable_files = self._get_indexable_files()
+        file_names = [f.name for f in indexable_files]
+        if not indexable_files:
             logger.info("No documents found in articles directory.")
             return 0, []
 
@@ -223,10 +238,14 @@ class ArticleService:
             logger.info(
                 "Article hashes match persisted vector storage. Skipping embedding rebuild."
             )
-            return len(files), files
+            return len(file_names), file_names
 
-        logger.info(f"Loading documents from {data_dir}...")
-        documents = SimpleDirectoryReader(str(data_dir)).load_data()
+        logger.info(
+            f"Loading {len(indexable_files)} document(s) from {data_dir}..."
+        )
+        documents = SimpleDirectoryReader(
+            input_files=[str(p) for p in indexable_files]
+        ).load_data()
 
         # Attach ticker metadata and strip absolute paths
         for doc in documents:
@@ -234,7 +253,7 @@ class ArticleService:
                 doc.metadata.get("file_name")
                 or Path(doc.metadata.get("file_path", "")).name
             )
-            ticker = Path(file_name).stem.upper()
+            ticker = Path(file_name).stem.split("_")[0].upper()
             doc.metadata["ticker"] = ticker
             doc.metadata["file_name"] = file_name
             # Strip absolute path for hygiene and privacy
@@ -256,7 +275,7 @@ class ArticleService:
         # Invalidate any cached query engine
         rag_engine_service.invalidate_cache()
         logger.info(f"Indexing complete! {len(documents)} document chunk(s) saved.")
-        return len(documents), files
+        return len(documents), file_names
 
 
 article_service = ArticleService()

@@ -48,8 +48,10 @@ class AnalysisService:
                 status_code=400, detail="Stock ticker symbol is required."
             )
 
-        file_path = settings.ARTICLES_DIR / f"{clean_ticker}.txt"
-        if not file_path.exists():
+        ticker_files = list(settings.ARTICLES_DIR.glob(f"{clean_ticker}*.txt")) + list(
+            settings.ARTICLES_DIR.glob(f"{clean_ticker}*.md")
+        )
+        if not ticker_files:
             raise HTTPException(
                 status_code=404,
                 detail=f"No documents ingested for {clean_ticker} yet. Add one in the Filings tab.",
@@ -110,10 +112,12 @@ class AnalysisService:
             )
 
         missing = []
-        if not (settings.ARTICLES_DIR / f"{clean_a}.txt").exists():
-            missing.append(clean_a)
-        if not (settings.ARTICLES_DIR / f"{clean_b}.txt").exists():
-            missing.append(clean_b)
+        for sym in [clean_a, clean_b]:
+            files = list(settings.ARTICLES_DIR.glob(f"{sym}*.txt")) + list(
+                settings.ARTICLES_DIR.glob(f"{sym}*.md")
+            )
+            if not files:
+                missing.append(sym)
 
         if missing:
             raise HTTPException(
@@ -147,21 +151,21 @@ class AnalysisService:
                     "metric": "Revenue ($B)",
                     clean_a: meta_a.get("revenue"),
                     clean_b: meta_b.get("revenue"),
-                    "source": meta_a.get("revenue_source") or "Yahoo Finance snapshot",
+                    "source": meta_a.get("revenue_source") or meta_a.get("source") or "Unknown",
                     "period": meta_a.get("revenue_period") or "period not stated",
                 },
                 {
                     "metric": "YoY Growth (%)",
                     clean_a: meta_a.get("growth_yoy"),
                     clean_b: meta_b.get("growth_yoy"),
-                    "source": meta_a.get("growth_source") or "Yahoo Finance snapshot",
+                    "source": meta_a.get("growth_source") or meta_a.get("source") or "Unknown",
                     "period": meta_a.get("growth_period") or "period not stated",
                 },
                 {
                     "metric": "Gross Margin (%)",
                     clean_a: meta_a.get("gross_margin"),
                     clean_b: meta_b.get("gross_margin"),
-                    "source": meta_a.get("margin_source") or "Yahoo Finance snapshot",
+                    "source": meta_a.get("margin_source") or meta_a.get("source") or "Unknown",
                     "period": meta_a.get("margin_period") or "period not stated",
                 },
             ]

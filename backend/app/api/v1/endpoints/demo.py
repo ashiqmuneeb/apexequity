@@ -7,7 +7,7 @@ router = APIRouter(prefix="/demo", tags=["Sample & Demo Datasets"])
 
 SAMPLE_SINGLE_STOCK = {
     "is_sample": True,
-    "sample_notice": "Sample demonstration data. Not live SEC data.",
+    "sample_notice": "Sample demonstration data. Not live SEC data. Note: Figures are illustrative old figures (2023-24 era) and not current.",
     "ticker": "NVDA",
     "prompt": "Evaluate revenue trajectory, core operating drivers, cloud/AI positioning, and risk factors.",
     "report": (
@@ -25,28 +25,28 @@ SAMPLE_SINGLE_STOCK = {
         "### 3. Material Risk Factors & Disclosures\n"
         "* **Export Restrictions:** US export controls regarding advanced semiconductor exports to China represent an ongoing headwind [1].\n"
         "* **Foundry & CoWoS Supply Limits:** Advanced packaging constraints dictate unit throughput limits.\n\n"
-        "*(Note: This report is sample illustrative data for platform evaluation purposes only. Not investment advice.)*"
+        "*(Note: This report is illustrative sample demonstration data (old 2023-24 era figures, not current). Not from a real document. Not investment advice.)*"
     ),
     "sentiment": "Revenue growth +265% YoY, gross margin 76% (Sample)",
     "metrics": {
         "source": "Sample data",
-        "source_label": "Yahoo Finance snapshot",
-        "source_badge": "Sample data",
+        "source_label": "Illustrative sample, not from a document",
+        "source_badge": "Illustrative sample, not from a document",
         "revenue": 22.1,
         "revenue_label": "$22.1B",
-        "revenue_source": "Yahoo Finance snapshot",
-        "revenue_period": "Q4",
+        "revenue_source": "Illustrative sample, not from a document",
+        "revenue_period": "Illustrative sample, not from a document",
         "growth_yoy": 265.0,
         "growth_label": "+265%",
-        "growth_source": "Yahoo Finance snapshot",
-        "growth_period": "Q4 YoY",
+        "growth_source": "Illustrative sample, not from a document",
+        "growth_period": "Illustrative sample, not from a document",
         "gross_margin": 76.0,
         "margin_label": "76.0%",
-        "margin_source": "Yahoo Finance snapshot",
-        "margin_period": "period not stated",
-        "primary_driver": "H100 Hopper & Accelerated Computing",
-        "driver_source": "Yahoo Finance snapshot",
-        "driver_period": "period not stated",
+        "margin_source": "Illustrative sample, not from a document",
+        "margin_period": "Illustrative sample, not from a document",
+        "primary_driver": "H100 Hopper & Accelerated Computing (Old sample)",
+        "driver_source": "Illustrative sample, not from a document",
+        "driver_period": "Illustrative sample, not from a document",
         "cloud_ai_revenue": "$18.4B Data Center",
         "sentiment": "Revenue growth +265% YoY, gross margin 76% (Sample)",
         "reason": None,
@@ -67,7 +67,7 @@ SAMPLE_SINGLE_STOCK = {
 
 SAMPLE_COMPARISON = {
     "is_sample": True,
-    "sample_notice": "Sample demonstration data. Not live SEC data.",
+    "sample_notice": "Sample demonstration data. Not live SEC data. Note: Figures are illustrative old figures (2023-24 era) and not current.",
     "stock_a": "NVDA",
     "stock_b": "GOOGL",
     "prompt": "Conduct a side-by-side comparative financial analysis between NVDA and GOOGL.",
@@ -83,29 +83,29 @@ SAMPLE_COMPARISON = {
         "### 3. Primary Risk Factors\n"
         "* **NVIDIA:** Supply chain dependencies (TSMC CoWoS packaging) and geopolitical export restrictions.\n"
         "* **Alphabet:** Digital ad cyclicality and antitrust litigation regarding search distribution.\n\n"
-        "*(Note: Sample illustrative benchmark data. Not investment advice.)*"
+        "*(Note: Sample illustrative benchmark data (old 2023-24 era figures, not current). Not from a real document. Not investment advice.)*"
     ),
     "comparison_metrics": [
         {
             "metric": "Revenue ($B)",
             "NVDA": 22.1,
             "GOOGL": 86.3,
-            "source": "Yahoo Finance snapshot",
-            "period": "Q4",
+            "source": "Illustrative sample, not from a document",
+            "period": "Illustrative sample, not from a document",
         },
         {
             "metric": "YoY Growth (%)",
             "NVDA": 265.0,
             "GOOGL": 13.0,
-            "source": "Yahoo Finance snapshot",
-            "period": "Q4 YoY",
+            "source": "Illustrative sample, not from a document",
+            "period": "Illustrative sample, not from a document",
         },
         {
             "metric": "Gross Margin (%)",
             "NVDA": 76.0,
             "GOOGL": 56.5,
-            "source": "Yahoo Finance snapshot",
-            "period": "period not stated",
+            "source": "Illustrative sample, not from a document",
+            "period": "Illustrative sample, not from a document",
         },
     ],
     "sources": [
@@ -124,7 +124,7 @@ SAMPLE_COMPARISON = {
 
 SAMPLE_COVERAGE = {
     "is_sample": True,
-    "sample_notice": "Sample demonstration data. Not live SEC data.",
+    "sample_notice": "Sample demonstration data. Not live SEC data. Note: Figures are illustrative old figures (2023-24 era) and not current.",
     "companies": [
         {
             "ticker": "NVDA",
@@ -134,9 +134,9 @@ SAMPLE_COVERAGE = {
             "growth": "+265% YoY",
             "margin": "76.0%",
             "trend": "up",
-            "badge": "Sample Data",
-            "source": "Yahoo Finance snapshot",
-            "period": "Q4",
+            "badge": "Sample Data (old 2023-24)",
+            "source": "Illustrative sample, not from a document",
+            "period": "Illustrative sample, not from a document",
         },
         {
             "ticker": "MSFT",
@@ -146,9 +146,9 @@ SAMPLE_COVERAGE = {
             "growth": "+18% YoY",
             "margin": "68.4%",
             "trend": "up",
-            "badge": "Sample Data",
-            "source": "Yahoo Finance snapshot",
-            "period": "Q2",
+            "badge": "Sample Data (old 2023-24)",
+            "source": "Illustrative sample, not from a document",
+            "period": "Illustrative sample, not from a document",
         },
         {
             "ticker": "GOOGL",
@@ -158,9 +158,9 @@ SAMPLE_COVERAGE = {
             "growth": "+13% YoY",
             "margin": "56.5%",
             "trend": "up",
-            "badge": "Sample Data",
-            "source": "Yahoo Finance snapshot",
-            "period": "Q4",
+            "badge": "Sample Data (old 2023-24)",
+            "source": "Illustrative sample, not from a document",
+            "period": "Illustrative sample, not from a document",
         },
         {
             "ticker": "AAPL",
@@ -170,9 +170,9 @@ SAMPLE_COVERAGE = {
             "growth": "+2% YoY",
             "margin": "45.9%",
             "trend": "down",
-            "badge": "Sample Data",
-            "source": "Yahoo Finance snapshot",
-            "period": "Q1",
+            "badge": "Sample Data (old 2023-24)",
+            "source": "Illustrative sample, not from a document",
+            "period": "Illustrative sample, not from a document",
         },
     ],
 }

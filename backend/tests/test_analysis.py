@@ -33,7 +33,7 @@ def test_compare_missing_document_returns_404(client):
     """Verifies that comparing with an uningested ticker returns HTTP 404 with friendly message."""
     response = client.post(
         "/api/v1/analyze/compare",
-        json={"stock_a": "NVDA", "stock_b": "MISSINGTICKER"},
+        json={"stock_a": "AMD", "stock_b": "MISSINGTICKER"},
     )
     assert response.status_code == 404
     assert (

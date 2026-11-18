@@ -104,6 +104,26 @@ frontend/
 
 ---
 
+## 🏁 Getting Started
+
+1. **Copy Environment Examples**:
+   ```bash
+   cp .env.example .env
+   cp backend/.env.example backend/.env
+   ```
+2. **Set SEC EDGAR User-Agent**:
+   In `backend/.env`, configure `SEC_EDGAR_USER_AGENT` with your name and contact email in accordance with SEC EDGAR policy:
+   ```env
+   SEC_EDGAR_USER_AGENT=YourName user@example.com
+   ```
+3. **Download Filings & Audited Disclosures**:
+   ```powershell
+   cd backend
+   python ingest_sec.py
+   ```
+
+---
+
 ## 🚀 Running the Application
 
 ### ⚡ 1-Click All-in-One Launch (Recommended)

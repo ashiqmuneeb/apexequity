@@ -1,37 +1,54 @@
-# Secrets: never commit
+# Secrets: never commit (keep .env.example tracked)
 .env
 .env.local
 *.env
+*.env.local
 !.env.example
 !**/.env.example
 
 # Python
-venv/
-.venv/
+/venv/
+/.venv/
+/backend/venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 .pytest_cache/
 .ruff_cache/
 
 # Node / frontend build
-node_modules/
-frontend/dist/
-dist/
+/node_modules/
+/frontend/node_modules/
+/dist/
+/frontend/dist/
 
-# Generated data (recreate with the scripts)
-backend/storage/
-backend/data/
-backend/articles/*_10K.txt
+# Generated data (recreated by scripts)
+/backend/storage/
+/storage/
+/backend/data/
+/data/
+/backend/articles/*_10K.txt
+
+# Databases & Archives
 *.db
 *.sqlite
-backend/articles/*_10K.txt
-articles/*_10K.txt
+*.sqlite3
+*.zip
 
 # Local-only documents with unverified claims
 ApexEquity_Project_and_Interview_Guide.pdf
 
-# Archives and OS/editor files
-*.zip
+# Logs
+*.log
+logs/
+/logs/
+/backend/logs/
+/frontend/logs/
+
+# OS / Editor files
 .DS_Store
 Thumbs.db
-*.log
+.vscode/
+.idea/
+*.suo
+*.sw?

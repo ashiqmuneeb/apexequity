@@ -126,7 +126,7 @@ export default function MarketCommandCenter({ onSelectStock, onQuickAnalyze, onL
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1.5 border-t border-slate-200/60">
-                  <span>{company.source || 'Yahoo Finance snapshot'}</span>
+                  <span>{company.source || 'Illustrative sample, not from a document'}</span>
                   <span>{company.period || 'period not stated'}</span>
                 </div>
               </div>

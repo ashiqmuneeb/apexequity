@@ -415,7 +415,7 @@ export default function ComparisonView({ availableTickers = [], onOpenKeyModal, 
                             </div>
                           </div>
                           <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono mt-2 pt-1 border-t border-slate-100">
-                            <span>{item.source || 'Yahoo Finance snapshot'}</span>
+                            <span>{item.source || (result.is_sample ? 'Illustrative sample, not from a document' : 'Ingested document')}</span>
                             <span>{item.period || 'period not stated'}</span>
                           </div>
                         </div>

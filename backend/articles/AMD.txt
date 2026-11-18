@@ -1,3 +1,6 @@
+[DOCUMENT_SOURCE: Yahoo Finance snapshot (undated)]
+[NOTE: Undated Yahoo Finance snapshot kept for historical reference. Excluded from 10-K index.]
+
 Advanced Micro Devices, Inc. (AMD) Financial & Corporate Overview
 
 Sector: Technology | Industry: Semiconductors

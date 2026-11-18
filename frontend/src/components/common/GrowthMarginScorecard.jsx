@@ -9,19 +9,36 @@ export default function GrowthMarginScorecard({ metrics, sentiment, ticker, isSa
   const primaryDriver = metrics?.primary_driver;
 
   const defaultSource = isSample
-    ? 'Yahoo Finance snapshot'
-    : (metrics?.source === 'SEC filing' ? 'SEC filing' : 'Yahoo Finance snapshot');
+    ? 'Illustrative sample, not from a document'
+    : (metrics?.source || 'Hand-written summary');
+
+  const defaultPeriod = isSample
+    ? 'Illustrative sample, not from a document'
+    : 'period not stated';
 
   const growthSource = metrics?.growth_source || defaultSource;
-  const growthPeriod = metrics?.growth_period || 'period not stated';
+  const growthPeriod = metrics?.growth_period || defaultPeriod;
 
   const marginSource = metrics?.margin_source || defaultSource;
-  const marginPeriod = metrics?.margin_period || 'period not stated';
+  const marginPeriod = metrics?.margin_period || defaultPeriod;
 
   const revSource = metrics?.revenue_source || defaultSource;
-  const revPeriod = metrics?.revenue_period || 'period not stated';
+  const revPeriod = metrics?.revenue_period || defaultPeriod;
 
-  const hasData = growth !== null && growth !== undefined || margin !== null && margin !== undefined;
+  const growthAccession = metrics?.growth_accession || metrics?.accession_number;
+  const marginAccession = metrics?.margin_accession || metrics?.accession_number;
+  const revAccession = metrics?.revenue_accession || metrics?.accession_number;
+
+  const isSec = metrics?.source === 'SEC filing' || metrics?.source_badge?.includes('SEC') || metrics?.source?.toLowerCase().includes('sec');
+  const hasData = (growth !== null && growth !== undefined) || (margin !== null && margin !== undefined);
+
+  const badgeLabel = !hasData
+    ? 'Data Absent'
+    : isSample
+    ? 'Sample data'
+    : isSec
+    ? 'SEC filing (XBRL)'
+    : 'Ingested document';
 
   // Transparent, disclosed formula description
   const formulaExplanation =
@@ -66,7 +83,7 @@ export default function GrowthMarginScorecard({ metrics, sentiment, ticker, isSa
             </span>
           )}
           <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-[#01257D] shadow-xs">
-            {hasData ? (isSample ? 'Sample document' : 'From ingested document') : 'Data Absent'}
+            {badgeLabel}
           </span>
         </div>
       </div>
@@ -110,8 +127,14 @@ export default function GrowthMarginScorecard({ metrics, sentiment, ticker, isSa
               {growth !== null && growth !== undefined ? (growth > 0 ? `+${growth}%` : `${growth}%`) : 'N/A'}
             </span>
           </div>
-          <div className="text-[9px] text-slate-500 font-mono mt-1 pt-1 border-t border-slate-200/60 truncate" title={`${growthSource} • ${growthPeriod}`}>
-            {growthSource} &bull; {growthPeriod}
+          <div className="flex flex-col gap-0.5 text-[9px] text-slate-500 font-mono mt-1.5 pt-1 border-t border-slate-200/60 text-left break-words">
+            <span className="font-semibold text-slate-700 break-words">{growthSource}</span>
+            <span className="break-words text-slate-600 font-medium">{growthPeriod}</span>
+            {growthAccession && (
+              <span className="text-[8px] text-slate-400 break-all font-normal">
+                Accn: {growthAccession}
+              </span>
+            )}
           </div>
         </div>
 
@@ -125,8 +148,14 @@ export default function GrowthMarginScorecard({ metrics, sentiment, ticker, isSa
               {margin !== null && margin !== undefined ? `${margin}%` : 'N/A'}
             </span>
           </div>
-          <div className="text-[9px] text-slate-500 font-mono mt-1 pt-1 border-t border-slate-200/60 truncate" title={`${marginSource} • ${marginPeriod}`}>
-            {marginSource} &bull; {marginPeriod}
+          <div className="flex flex-col gap-0.5 text-[9px] text-slate-500 font-mono mt-1.5 pt-1 border-t border-slate-200/60 text-left break-words">
+            <span className="font-semibold text-slate-700 break-words">{marginSource}</span>
+            <span className="break-words text-slate-600 font-medium">{marginPeriod}</span>
+            {marginAccession && (
+              <span className="text-[8px] text-slate-400 break-all font-normal">
+                Accn: {marginAccession}
+              </span>
+            )}
           </div>
         </div>
 
@@ -140,8 +169,14 @@ export default function GrowthMarginScorecard({ metrics, sentiment, ticker, isSa
               {revenue || 'N/A'}
             </span>
           </div>
-          <div className="text-[9px] text-slate-500 font-mono mt-1 pt-1 border-t border-slate-200/60 truncate" title={`${revSource} • ${revPeriod}`}>
-            {revSource} &bull; {revPeriod}
+          <div className="flex flex-col gap-0.5 text-[9px] text-slate-500 font-mono mt-1.5 pt-1 border-t border-slate-200/60 text-left break-words">
+            <span className="font-semibold text-slate-700 break-words">{revSource}</span>
+            <span className="break-words text-slate-600 font-medium">{revPeriod}</span>
+            {revAccession && (
+              <span className="text-[8px] text-slate-400 break-all font-normal">
+                Accn: {revAccession}
+              </span>
+            )}
           </div>
         </div>
       </div>

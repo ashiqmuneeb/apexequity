@@ -11,6 +11,79 @@ from sentence_transformers import CrossEncoder
 from app.core.config import settings
 from app.core.logger import logger
 from app.schemas.analysis import SourceEvidenceNode
+from app.services.chunking_service import is_valid_body_chunk
+
+
+def extract_best_matching_quote(chunk_text: str, query: str, max_chars: int = 300) -> str:
+    """Extracts the passage inside chunk_text that best matches the query (highest-scoring 1-2 sentences,
+
+    at most max_chars characters), rather than the first 300 characters of the chunk.
+    """
+    clean_text = chunk_text.strip()
+    if not clean_text:
+        return ""
+
+    # Clean leading headers, markdown bars, or TOC lines
+    lines = clean_text.splitlines()
+    body_lines: list[str] = []
+    for line in lines:
+        l_str = line.strip()
+        if not l_str:
+            continue
+        if re.match(r"^(=+|-+|\*+|#+)\s*", l_str):
+            continue
+        if re.match(r"^(ITEM|PART)\s+[0-9A-Za-z]+", l_str, re.IGNORECASE):
+            continue
+        if re.match(r"^Table of Contents", l_str, re.IGNORECASE):
+            continue
+        body_lines.append(l_str)
+
+    content = " ".join(body_lines) if body_lines else clean_text
+
+    # Split into sentences
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", content) if s.strip()]
+    if not sentences:
+        quote = content[:max_chars].strip()
+        return quote + ("..." if len(content) > max_chars else "")
+
+    # Query tokens (skip short words and common stopwords)
+    q_words = re.findall(r"\b[a-zA-Z0-9'-]+\b", query.lower())
+    stopwords = {
+        "what", "which", "where", "when", "that", "this", "these", "those", "from",
+        "with", "have", "been", "were", "does", "about", "their", "under", "into",
+        "some", "more", "most", "than", "will", "would", "could", "should", "your",
+        "they", "them", "then", "there", "and", "the", "for", "are"
+    }
+    q_tokens = {w for w in q_words if len(w) >= 3 and w not in stopwords}
+
+    candidates: list[str] = []
+    for i in range(len(sentences)):
+        s1 = sentences[i]
+        candidates.append(s1)
+        if i + 1 < len(sentences):
+            pair = f"{s1} {sentences[i + 1]}"
+            if len(pair) <= max_chars + 40:
+                candidates.append(pair)
+
+    best_cand = candidates[0]
+    best_score = -1.0
+
+    for cand in candidates:
+        cand_words = set(re.findall(r"\b[a-zA-Z0-9'-]+\b", cand.lower()))
+        matched = q_tokens.intersection(cand_words)
+        score = float(len(matched))
+        # Slight boost for candidates fitting cleanly within max_chars
+        if len(cand) <= max_chars:
+            score += 0.05
+        if score > best_score:
+            best_score = score
+            best_cand = cand
+
+    if len(best_cand) > max_chars:
+        # Truncate cleanly at word boundary
+        best_cand = best_cand[:max_chars].rsplit(" ", 1)[0].rstrip(",;:-.") + "..."
+
+    return best_cand.strip()
 
 
 class RetrievalService:
@@ -102,7 +175,7 @@ class RetrievalService:
         tokenized_corpus: list[list[str]] = []
 
         for i, text in enumerate(docs):
-            if not text:
+            if not text or not is_valid_body_chunk(text, min_words=40):
                 continue
             meta = metadatas[i] if i < len(metadatas) else {}
             cid = ids[i] if i < len(ids) else f"chunk_{i}"
@@ -184,11 +257,14 @@ class RetrievalService:
             dists = dense_res["distances"][0] if dense_res["distances"] else []
 
             for rank, cid in enumerate(ids):
+                doc_text = docs[rank] if rank < len(docs) else ""
+                if not doc_text or not is_valid_body_chunk(doc_text, min_words=40):
+                    continue
                 # Cosine distance to similarity: 1 - dist
                 score = round(1.0 - dists[rank], 4) if rank < len(dists) else 0.5
                 dense_ranked.append({
                     "id": cid,
-                    "text": docs[rank] if rank < len(docs) else "",
+                    "text": doc_text,
                     "metadata": metas[rank] if rank < len(metas) else {},
                     "dense_score": score,
                     "dense_rank": rank + 1,
@@ -288,13 +364,11 @@ class RetrievalService:
 
         # Convert to SourceEvidenceNode schema
         sources: list[SourceEvidenceNode] = []
-        for c in final_candidates:
+        for rank_idx, c in enumerate(final_candidates, 1):
             meta = c.get("metadata", {})
             full_text = c.get("text", "")
-            # Quote capped at 300 characters
-            quote = full_text[:300].strip()
-            if len(full_text) > 300:
-                quote += "..."
+            # Extract highest-scoring 1-2 sentence passage (<= 300 chars) matching query
+            quote = extract_best_matching_quote(full_text, query, max_chars=300)
 
             r_score = round(float(c.get("retrieval_score") or 0.0), 4)
             rr_score = round(float(c.get("rerank_score")), 4) if c.get("rerank_score") is not None else None
@@ -308,6 +382,7 @@ class RetrievalService:
                     section=meta.get("section", "Item 1"),
                     accession_number=meta.get("accession_number"),
                     quote=quote,
+                    rank=rank_idx,
                     retrieval_score=r_score,
                     rerank_score=rr_score,
                     score=rr_score if rr_score is not None else r_score,

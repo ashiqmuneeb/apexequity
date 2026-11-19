@@ -406,15 +406,11 @@ export default function SingleStockView({
                             Citation [{i + 1}] &bull; {src.ticker || src.metadata?.ticker || result.ticker} &bull; {src.section || src.metadata?.section || 'Item 1'} ({src.form || '10-K'} FY{src.fiscal_year || src.metadata?.fiscal_year || ''})
                           </span>
                           <div className="flex items-center gap-2">
+                            <span className="bg-blue-50 text-[#01257D] px-2 py-0.5 rounded border border-blue-200 font-bold">
+                              #{src.rank || i + 1}
+                            </span>
                             {src.rerank_score != null && (
-                              <span className="bg-indigo-50 text-indigo-800 px-2 py-0.5 rounded border border-indigo-200 font-bold">
-                                Rerank score: {src.rerank_score.toFixed(3)}
-                              </span>
-                            )}
-                            {src.retrieval_score != null && (
-                              <span className="bg-blue-50 text-[#01257D] px-2 py-0.5 rounded border border-blue-200 font-bold">
-                                Retrieval score: {src.retrieval_score.toFixed(4)}
-                              </span>
+                              <InfoTooltip title="rerank score" text={src.rerank_score.toFixed(3)} />
                             )}
                           </div>
                         </div>

@@ -4,6 +4,7 @@ import { analysisApi } from '../../api/analysisApi';
 import MarkdownView from '../../components/common/MarkdownView';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import ErrorCard from '../../components/common/ErrorCard';
+import InfoTooltip from '../../components/common/InfoTooltip';
 import { SAMPLE_QUESTIONS } from '../../constants/stockTickers';
 
 export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '', onGoToFilings }) {
@@ -178,15 +179,11 @@ export default function CustomQueryView({ onOpenKeyModal, initialPrompt = '', on
                           Citation [{i + 1}] &bull; {src.ticker || src.metadata?.ticker || ''} &bull; {src.section || src.metadata?.section || 'Item 1'} ({src.form || '10-K'} FY{src.fiscal_year || src.metadata?.fiscal_year || ''})
                         </span>
                         <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[#01257D] font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-bold">
+                            #{src.rank || i + 1}
+                          </span>
                           {src.rerank_score != null && (
-                            <span className="text-[10px] text-indigo-800 font-mono bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 font-bold">
-                              Rerank score: {src.rerank_score.toFixed(3)}
-                            </span>
-                          )}
-                          {src.retrieval_score != null && (
-                            <span className="text-[10px] text-[#01257D] font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-bold">
-                              Retrieval score: {src.retrieval_score.toFixed(4)}
-                            </span>
+                            <InfoTooltip title="rerank score" text={src.rerank_score.toFixed(3)} />
                           )}
                         </div>
                       </div>

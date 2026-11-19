@@ -8,6 +8,35 @@ from app.core.config import settings
 from app.core.logger import logger
 
 
+def is_valid_body_chunk(text: str, min_words: int = 40) -> bool:
+    """Checks whether a chunk contains genuine body text and is not merely a heading or TOC snippet.
+
+    Skips chunks that contain only a heading and drops chunks with fewer than 40 words of body text.
+    """
+    clean_text = text.strip()
+    if not clean_text:
+        return False
+
+    lines = clean_text.splitlines()
+    body_lines: list[str] = []
+    for line in lines:
+        l_str = line.strip()
+        if not l_str:
+            continue
+        # Exclude headers, item markers, TOC dividers, and markdown horizontal rules
+        if re.match(r"^(=+|-+|\*+|#+)\s*", l_str):
+            continue
+        if re.match(r"^(ITEM|PART)\s+[0-9A-Za-z]+", l_str, re.IGNORECASE):
+            continue
+        if re.match(r"^Table of Contents", l_str, re.IGNORECASE):
+            continue
+        body_lines.append(l_str)
+
+    body_text = " ".join(body_lines)
+    words = re.findall(r"\b[A-Za-z0-9'-]+\b", body_text)
+    return len(words) >= min_words
+
+
 class SectionAwareChunker:
     """Splits Form 10-K filings into Items (1, 1A, 7, 8) and chunks them with rich metadata."""
 
@@ -105,13 +134,20 @@ class SectionAwareChunker:
         for section_name, section_text in sections:
             # Chunk section content
             chunks = self.splitter.split_text(section_text)
-            for idx, chunk in enumerate(chunks):
+            valid_idx = 0
+            for raw_chunk in chunks:
+                chunk = raw_chunk.strip()
+                # Condition: Skip chunks that contain only a heading; drop if < 40 words of body text
+                if not is_valid_body_chunk(chunk, min_words=40):
+                    continue
+
                 chunk_meta = dict(meta)
                 chunk_meta["section"] = section_name
-                chunk_meta["chunk_index"] = idx
+                chunk_meta["chunk_index"] = valid_idx
 
                 # Build clean unique node id
-                node_id = f"{meta['ticker']}_{meta['fiscal_year']}_{section_name.replace(' ', '_')}_{idx}"
+                node_id = f"{meta['ticker']}_{meta['fiscal_year']}_{section_name.replace(' ', '_')}_{valid_idx}"
+                valid_idx += 1
 
                 node = TextNode(
                     id_=node_id,

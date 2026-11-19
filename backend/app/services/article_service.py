@@ -42,14 +42,21 @@ class ArticleService:
             indexable.append(f)
         return indexable
 
+    CHUNKER_VERSION = "v2_filtered_40w"
+
     def _compute_hashes(self) -> dict[str, str]:
-        """Computes SHA256 hashes of indexable text and markdown files in articles directory."""
+        """Computes SHA256 hashes of indexable text files, salted with chunker version and settings
+
+        so vector storage automatically rebuilds whenever chunk filtering or chunk sizing changes (Condition 7).
+        """
         hashes = {}
         files = self._get_indexable_files()
+        chunk_signature = f"{self.CHUNKER_VERSION}_{settings.CHUNK_SIZE}_{settings.CHUNK_OVERLAP}"
         for f in files:
             try:
                 content = f.read_bytes()
-                hashes[f.name] = hashlib.sha256(content).hexdigest()
+                combined = content + f"__CHUNK_SIG_{chunk_signature}__".encode()
+                hashes[f.name] = hashlib.sha256(combined).hexdigest()
             except Exception as e:
                 logger.warning(f"Could not hash {f.name}: {e}")
         return hashes

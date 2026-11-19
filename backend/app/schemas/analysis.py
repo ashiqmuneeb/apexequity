@@ -35,6 +35,7 @@ class SourceEvidenceNode(BaseModel):
     section: str | None = None
     accession_number: str | None = None
     quote: str = ""
+    rank: int | None = Field(None, description="Retrieval rank (#1, #2, ...)")
     retrieval_score: float | None = Field(
         None, description="Dense/BM25 Reciprocal Rank Fusion retrieval score"
     )

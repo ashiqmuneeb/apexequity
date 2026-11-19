@@ -1,26 +1,9 @@
+import re
+import time
+
 from fastapi import HTTPException
-from llama_index.core import (
-    Settings,
-    StorageContext,
-    load_index_from_storage,
-)
-from llama_index.core.embeddings import BaseEmbedding
-from llama_index.core.llms import LLM
-from llama_index.core.node_parser import SentenceSplitter
-from llama_index.core.prompts import PromptTemplate
-from llama_index.core.vector_stores.types import (
-    FilterOperator,
-    MetadataFilter,
-    MetadataFilters,
-)
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.core import PromptTemplate
 from llama_index.llms.groq import Groq
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from app.core.config import settings
 from app.core.logger import logger
@@ -28,13 +11,15 @@ from app.core.logger import logger
 
 QA_PROMPT_TEMPLATE = PromptTemplate(
     "You are ApexEquity, an institutional financial research analyst.\n"
-    "Answer the inquiry strictly and solely based on the retrieved filing context provided below.\n"
+    "Answer the inquiry strictly and solely based on the VERIFIED FACTS and retrieved filing context provided below.\n\n"
     "Rules:\n"
-    "1. Answer ONLY using the facts, figures, and statements in the context.\n"
-    "2. Cite your sources inline using [1], [2], etc., corresponding to the retrieved context chunks.\n"
-    "3. If the retrieved context does not contain the answer, reply exactly:\n"
+    "1. Numbers and financial metrics may ONLY come from VERIFIED FACTS or from the retrieved text chunks below. Never extrapolate, speculate, or invent financial figures.\n"
+    "2. Cite your sources inline using [1], [2], etc., corresponding to the numbered context passages.\n"
+    "3. Include prior-year values from VERIFIED FACTS so growth rates and margin changes can be stated accurately.\n"
+    "4. If the retrieved context and VERIFIED FACTS do not contain the answer, or if the question asks about a specific time period (e.g. 2012) not covered in the context, reply EXACTLY:\n"
     '   "Not disclosed in the retrieved filings."\n'
-    "4. Never extrapolate, speculate, or invent financial figures.\n\n"
+    "   Do not attempt to answer questions about uncovered years or missing metrics using other years' data.\n"
+    "5. Format financial comparisons and data points clearly with proper institutional rigor.\n\n"
     "Context information is below:\n"
     "---------------------\n"
     "{context_str}\n"
@@ -45,22 +30,19 @@ QA_PROMPT_TEMPLATE = PromptTemplate(
 
 
 class RAGEngineService:
-    """Manages LlamaIndex query engine lifecycle, embeddings, model validation,
+    """Manages Groq LLM integration with automatic fallback, tenacity retries,
 
-    and Groq LLM integration with automatic fallback and tenacity retries.
+    and strict 429 rate limit error mapping with Retry-After header parsing.
     """
 
     def __init__(self):
-        self._cached_index = None
-        self._cached_llm: LLM | None = None
-        self._cached_embed_model: BaseEmbedding | None = None
+        self._cached_llm: Groq | None = None
         self._cached_api_key: str | None = None
         self._active_model_name: str | None = None
 
     def invalidate_cache(self) -> None:
         """Clears cached query engine when index is rebuilt or key is changed."""
-        logger.info("Invalidating cached RAG QueryEngine and index")
-        self._cached_index = None
+        logger.info("Invalidating cached RAG QueryEngine")
         self._cached_llm = None
         self._cached_api_key = None
         self._active_model_name = None
@@ -69,76 +51,44 @@ class RAGEngineService:
     def active_model_name(self) -> str:
         return self._active_model_name or settings.GROQ_MODEL
 
-    def _test_llm_call(self, llm_instance: Groq) -> None:
-        """Runs a cheap test call with tenacity retry on transient errors."""
+    @staticmethod
+    def parse_retry_after(error: Exception) -> int:
+        """Parses Retry-After value in seconds from Groq 429 response or error message (Condition 6)."""
+        # 1. Check response headers if present on exception
+        response = getattr(error, "response", None)
+        if response is not None and hasattr(response, "headers"):
+            headers = response.headers
+            ra = headers.get("retry-after") or headers.get("Retry-After")
+            if ra:
+                try:
+                    return int(float(ra))
+                except ValueError:
+                    pass
 
-        @retry(
-            retry=retry_if_exception_type((ConnectionError, TimeoutError)),
-            stop=stop_after_attempt(3),
-            wait=wait_exponential(multiplier=1, min=1, max=4),
-            reraise=True,
-        )
-        def _execute():
-            llm_instance.complete("ping")
-
-        _execute()
-
-    def _validate_and_get_llm(self, groq_key: str) -> tuple[Groq, str]:
-        """Instantiates the configured Groq model, performs a cheap test call at first use,
-
-        and falls back to safe alternates if the primary model fails.
-        """
-        primary_model = settings.GROQ_MODEL
-        candidates = [
-            primary_model,
-            settings.GROQ_FALLBACK_MODEL,
-            "openai/gpt-oss-20b",
-            "llama-3.1-8b-instant",
-        ]
-        # De-duplicate while preserving order
-        unique_candidates: list[str] = []
-        for c in candidates:
-            if c and c not in unique_candidates:
-                unique_candidates.append(c)
-
-        last_error = None
-        for model_name in unique_candidates:
+        # 2. Check string message for "try again in Xs" or "retry after X seconds"
+        err_msg = str(error)
+        match = re.search(r"try again in\s*([0-9.]+)\s*s", err_msg, re.IGNORECASE)
+        if match:
             try:
-                logger.info(
-                    f"Testing Groq model '{model_name}' with temperature {settings.TEMPERATURE}..."
-                )
-                llm = Groq(
-                    model=model_name,
-                    api_key=groq_key,
-                    temperature=settings.TEMPERATURE,
-                )
-                self._test_llm_call(llm)
-                logger.info(f"Groq model '{model_name}' successfully validated.")
-                return llm, model_name
-            except Exception as e:
-                last_error = e
-                logger.error(
-                    f"Groq model '{model_name}' failed validation test call: {e}."
-                )
-                continue
+                return max(1, int(float(match.group(1))))
+            except ValueError:
+                pass
 
-        raise HTTPException(
-            status_code=502,
-            detail=(
-                f"Failed to initialize any Groq LLM model. Last error: {last_error}"
-            ),
-        )
+        match_sec = re.search(r"retry after\s*([0-9.]+)\s*s", err_msg, re.IGNORECASE)
+        if match_sec:
+            try:
+                return max(1, int(float(match_sec.group(1))))
+            except ValueError:
+                pass
 
-    def get_query_engine(
+        return 5  # Fallback default if unspecified
+
+    def generate_completion(
         self,
+        prompt: str,
         override_key: str | None = None,
-        ticker: str | None = None,
-        force_reload: bool = False,
-    ):
-        """Retrieves or creates a query engine connected to persisted vector store,
-
-        with optional ticker metadata filtering and strict QA citation prompt.
-        """
+    ) -> str:
+        """Executes LLM completion across configured Groq models with fallback and retry backoff."""
         groq_key = settings.get_groq_api_key(override_key)
         if not groq_key:
             raise HTTPException(
@@ -146,76 +96,73 @@ class RAGEngineService:
                 detail="GROQ_API_KEY is not configured. Provide it in .env or via request payload.",
             )
 
-        storage_path = settings.STORAGE_DIR
-        if not storage_path.exists() or not any(storage_path.iterdir()):
+        candidate_models = [
+            settings.GROQ_MODEL,
+            settings.GROQ_FALLBACK_MODEL,
+            "openai/gpt-oss-20b",
+            "llama-3.1-8b-instant",
+        ]
+        unique_models: list[str] = []
+        for m in candidate_models:
+            if m and m not in unique_models:
+                unique_models.append(m)
+
+        last_error: Exception | None = None
+        retry_after_sec = 5
+
+        for model_name in unique_models:
+            # Attempt up to 2 tries per model with exponential backoff on transient errors
+            for attempt in range(2):
+                try:
+                    logger.info(
+                        f"Executing Groq completion with model '{model_name}' (temp: {settings.TEMPERATURE})..."
+                    )
+                    llm = Groq(
+                        model=model_name,
+                        api_key=groq_key,
+                        temperature=settings.TEMPERATURE,
+                    )
+                    resp = llm.complete(prompt)
+                    self._active_model_name = model_name
+                    self._cached_llm = llm
+                    self._cached_api_key = groq_key
+                    return str(resp).strip()
+                except Exception as e:
+                    last_error = e
+                    err_str = str(e)
+                    is_rate_limit = "429" in err_str or "rate limit" in err_str.lower()
+                    if is_rate_limit:
+                        retry_after_sec = self.parse_retry_after(e)
+                        logger.warning(
+                            f"Groq 429 Rate Limit on model '{model_name}' (attempt {attempt + 1}). Retry-After: {retry_after_sec}s."
+                        )
+                        if attempt == 0:
+                            time.sleep(min(retry_after_sec, 3))
+                            continue
+                        # If attempt 1 also rate limits, fall back to next model
+                        break
+                    elif "404" in err_str or "not found" in err_str.lower() or "500" in err_str or "502" in err_str:
+                        logger.warning(
+                            f"Groq model '{model_name}' failed with {e}. Falling back to next candidate model..."
+                        )
+                        break
+                    else:
+                        logger.warning(f"Groq call failed on '{model_name}': {e}")
+                        break
+
+        # If all candidates failed: map upstream error cleanly
+        err_msg = str(last_error) if last_error else "All Groq model candidates failed."
+        if "429" in err_msg or "rate limit" in err_msg.lower():
             raise HTTPException(
-                status_code=400,
-                detail="Vector storage index not found. Please trigger 'Rebuild Index' first.",
+                status_code=429,
+                detail=f"Groq API rate limit exceeded. Retry after {retry_after_sec} seconds.",
+                headers={"Retry-After": str(retry_after_sec)},
             )
 
-        # Configure global chunking and node parsing
-        Settings.node_parser = SentenceSplitter(
-            chunk_size=settings.CHUNK_SIZE,
-            chunk_overlap=settings.CHUNK_OVERLAP,
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to generate completion from Groq LLM: {err_msg}",
         )
 
-        try:
-            # Re-initialize LLM if key changed or not cached
-            if (
-                self._cached_llm is None
-                or self._cached_api_key != groq_key
-                or force_reload
-            ):
-                llm, model_name = self._validate_and_get_llm(groq_key)
-                self._cached_llm = llm
-                self._active_model_name = model_name
-                self._cached_api_key = groq_key
-                Settings.llm = llm
 
-            # Re-initialize Embeddings if not cached
-            if self._cached_embed_model is None:
-                embed_model = HuggingFaceEmbedding(
-                    model_name=settings.DEFAULT_EMBED_MODEL
-                )
-                self._cached_embed_model = embed_model
-                Settings.embed_model = embed_model
-
-            # Load index if not cached
-            if self._cached_index is None or force_reload:
-                logger.info(f"Loading VectorStoreIndex from {storage_path}...")
-                storage_context = StorageContext.from_defaults(
-                    persist_dir=str(storage_path)
-                )
-                self._cached_index = load_index_from_storage(storage_context)
-
-            # Build query engine with optional metadata filter by ticker
-            kwargs = {
-                "similarity_top_k": settings.SIMILARITY_TOP_K,
-                "text_qa_template": QA_PROMPT_TEMPLATE,
-            }
-
-            if ticker and ticker.strip():
-                clean_ticker = ticker.strip().upper()
-                kwargs["filters"] = MetadataFilters(
-                    filters=[
-                        MetadataFilter(
-                            key="ticker",
-                            value=clean_ticker,
-                            operator=FilterOperator.EQ,
-                        )
-                    ]
-                )
-
-            return self._cached_index.as_query_engine(**kwargs)
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Failed to initialize RAG QueryEngine: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to load query engine: {str(e)}",
-            )
-
-
-# Singleton service instance
 rag_engine_service = RAGEngineService()

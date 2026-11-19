@@ -3,6 +3,7 @@ import os
 import re
 import time
 import warnings
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -154,49 +155,132 @@ class SECClient:
         return self.get(url, safe_name)
 
 
+def format_verified_facts(metrics: dict[str, Any]) -> str:
+    """Formats structured SEC XBRL facts into a VERIFIED FACTS prompt context block."""
+    ticker = metrics.get("ticker", "UNKNOWN")
+    company = metrics.get("company_name") or ticker
+    accn = metrics.get("accession_number", "N/A")
+    period_end = metrics.get("period_end_date", "N/A")
+
+    lines = [
+        "=== VERIFIED FACTS (SEC EDGAR XBRL) ===",
+        f"Company: {company} ({ticker})",
+        f"Primary Accession Number: {accn}",
+        "",
+        f"Current Period (ended {period_end}):",
+        f"- Revenue: {metrics.get('revenue_label', 'N/A')} ({metrics.get('revenue_raw', 0):,.0f} USD) [Tag: {metrics.get('revenue_tag', 'N/A')}]",
+    ]
+
+    if metrics.get("gross_profit_label") is not None:
+        lines.append(
+            f"- Gross Profit: {metrics.get('gross_profit_label')} ({metrics.get('gross_profit_raw', 0):,.0f} USD) [Tag: {metrics.get('gross_profit_tag', 'N/A')}]"
+        )
+    if metrics.get("cost_label") is not None:
+        lines.append(
+            f"- Cost of Revenue: {metrics.get('cost_label')} ({metrics.get('cost_raw', 0):,.0f} USD) [Tag: {metrics.get('cost_tag', 'N/A')}]"
+        )
+    lines.append(
+        f"- Gross Margin: {metrics.get('margin_label', 'N/A')} [Tag: {metrics.get('margin_tag', 'N/A')}]"
+    )
+    if metrics.get("growth_label") is not None:
+        lines.append(
+            f"- YoY Revenue Growth: {metrics.get('growth_label')} ({metrics.get('growth_period', 'N/A')})"
+        )
+
+    # Prior Period
+    prior_end = metrics.get("prior_period_end_date")
+    if prior_end:
+        prior_accn = metrics.get("prior_accession_number") or accn
+        lines.extend([
+            "",
+            f"Prior Period (ended {prior_end}) [Accession: {prior_accn}]:",
+            f"- Prior Revenue: {metrics.get('prior_revenue_label', 'N/A')} ({metrics.get('prior_revenue_raw', 0):,.0f} USD) [Tag: {metrics.get('revenue_tag', 'N/A')}]",
+        ])
+        if metrics.get("prior_gross_profit_label") is not None:
+            lines.append(
+                f"- Prior Gross Profit: {metrics.get('prior_gross_profit_label')} ({metrics.get('prior_gross_profit_raw', 0):,.0f} USD) [Tag: {metrics.get('gross_profit_tag', 'N/A')}]"
+            )
+        if metrics.get("prior_cost_label") is not None:
+            lines.append(
+                f"- Prior Cost of Revenue: {metrics.get('prior_cost_label')} ({metrics.get('prior_cost_raw', 0):,.0f} USD) [Tag: {metrics.get('cost_tag', 'N/A')}]"
+            )
+        if metrics.get("prior_margin_label") is not None:
+            lines.append(
+                f"- Prior Gross Margin: {metrics.get('prior_margin_label')}"
+            )
+
+    lines.append("=== END VERIFIED FACTS ===")
+    return "\n".join(lines)
+
+
 class XBRLParser:
     """Parses audited financial metrics from SEC EDGAR XBRL company facts."""
 
     @staticmethod
-    def _filter_annual_10k(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Filters entries for Form 10-K full fiscal year disclosures."""
-        annual = []
+    def _filter_annual_10k(entries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+        """Filters entries for Form 10-K full fiscal year disclosures (~12 month duration).
+
+        Groups by period end date and retains the most recently filed entry for restatements.
+        """
+        by_end: dict[str, dict[str, Any]] = {}
         for e in entries:
             form = (e.get("form") or "").upper()
-            fp = (e.get("fp") or "").upper()
-            if "10-K" in form and fp == "FY" and "val" in e and "end" in e and "fy" in e:
-                annual.append(e)
-        # Sort primarily by period end date, secondarily by filing date
-        annual.sort(
-            key=lambda x: (str(x.get("end") or ""), str(x.get("filed") or "")),
-            reverse=True,
-        )
-        return annual
+            if "10-K" not in form:
+                continue
+            start = e.get("start")
+            end = e.get("end")
+            val = e.get("val")
+            if val is None or not end:
+                continue
+
+            is_annual = False
+            if start and end:
+                try:
+                    s_dt = datetime.strptime(start, "%Y-%m-%d")
+                    e_dt = datetime.strptime(end, "%Y-%m-%d")
+                    days = (e_dt - s_dt).days
+                    if 330 <= days <= 400:
+                        is_annual = True
+                except Exception:
+                    pass
+            elif (e.get("fp") or "").upper() == "FY":
+                is_annual = True
+
+            if is_annual:
+                # If end date already present, keep the most recently filed one (for restatements)
+                existing = by_end.get(end)
+                if existing is None or str(e.get("filed") or "") > str(existing.get("filed") or ""):
+                    by_end[end] = e
+
+        return by_end
 
     def _find_best_annual_facts(
         self, gaap_facts: dict[str, Any], tag_candidates: list[str]
-    ) -> tuple[str | None, list[dict[str, Any]]]:
-        """Finds candidate tag that contains the most recent 10-K FY facts."""
+    ) -> tuple[str | None, dict[str, dict[str, Any]]]:
+        """Finds candidate tag that contains the most recent 10-K annual facts."""
         best_tag = None
-        best_entries: list[dict[str, Any]] = []
+        best_entries: dict[str, dict[str, Any]] = {}
         best_latest_date = ""
 
         for tag in tag_candidates:
             if tag in gaap_facts and "units" in gaap_facts[tag]:
                 units = gaap_facts[tag]["units"]
                 if "USD" in units:
-                    annual = self._filter_annual_10k(units["USD"])
-                    if annual:
-                        latest_date = str(annual[0].get("end") or "")
+                    annual_map = self._filter_annual_10k(units["USD"])
+                    if annual_map:
+                        latest_date = max(annual_map.keys())
                         if latest_date > best_latest_date:
                             best_latest_date = latest_date
                             best_tag = tag
-                            best_entries = annual
+                            best_entries = annual_map
 
         return best_tag, best_entries
 
     def parse_metrics(self, ticker: str, facts_json: dict[str, Any]) -> dict[str, Any]:
-        """Extracts latest 10-K revenue, gross margin, YoY growth, periods, and accession numbers."""
+        """Extracts audited 10-K revenue, gross margin, YoY growth, periods, and accession numbers.
+
+        Extracts both current and prior-year values by period end date and duration (~12 months).
+        """
         clean_ticker = ticker.upper()
         facts = facts_json.get("facts", {})
         us_gaap = facts.get("us-gaap", {})
@@ -204,80 +288,81 @@ class XBRLParser:
 
         # 1. Revenue
         rev_tag, annual_rev = self._find_best_annual_facts(us_gaap, REVENUE_TAGS)
-
         if not annual_rev:
             raise ValueError(f"No annual 10-K revenue facts found in XBRL data for {clean_ticker}")
 
-        latest_rev_entry = annual_rev[0]
-        revenue_val = float(latest_rev_entry["val"])
-        fy = int(latest_rev_entry["fy"])
-        period_end = str(latest_rev_entry["end"])
-        accn = str(latest_rev_entry["accn"])
+        sorted_rev_ends = sorted(annual_rev.keys(), reverse=True)
+        cur_end = sorted_rev_ends[0]
+        prior_end = sorted_rev_ends[1] if len(sorted_rev_ends) > 1 else None
+
+        cur_rev_entry = annual_rev[cur_end]
+        revenue_val = float(cur_rev_entry["val"])
+        fy = int(cur_rev_entry.get("fy") or cur_end[:4])
+        period_end = cur_end
+        accn = str(cur_rev_entry.get("accn") or "")
         rev_tag_used = rev_tag
 
-        # YoY Growth
-        prev_rev_entry = next((e for e in annual_rev if e.get("fy") == fy - 1), None)
+        # Prior Revenue & YoY Growth
         growth_yoy = None
         growth_period = "period not stated"
-        if prev_rev_entry and prev_rev_entry.get("val"):
-            prev_val = float(prev_rev_entry["val"])
-            growth_yoy = round(((revenue_val - prev_val) / prev_val) * 100.0, 1)
-            growth_period = f"FY {fy} vs FY {fy - 1} (ended {period_end})"
+        prior_rev_val = None
+        prior_accn = None
+        prior_fy = None
 
-        # 2. Gross Margin (Condition 8)
-        # Check for GrossProfit first
-        best_gp_tag = None
-        matching_gp = None
-        for tag in GROSS_PROFIT_TAGS:
-            if tag in us_gaap and "units" in us_gaap[tag]:
-                units = us_gaap[tag]["units"]
-                if "USD" in units:
-                    annual_gp = self._filter_annual_10k(units["USD"])
-                    match = next(
-                        (e for e in annual_gp if e.get("end") == period_end or e.get("fy") == fy),
-                        None,
-                    )
-                    if match and match.get("val") is not None:
-                        best_gp_tag = tag
-                        matching_gp = match
-                        break
+        if prior_end and prior_end in annual_rev:
+            prev_rev_entry = annual_rev[prior_end]
+            prior_rev_val = float(prev_rev_entry["val"])
+            prior_accn = str(prev_rev_entry.get("accn") or accn)
+            prior_fy = int(prev_rev_entry.get("fy") or prior_end[:4])
+            growth_yoy = round(((revenue_val - prior_rev_val) / prior_rev_val) * 100.0, 1)
+            growth_period = f"FY ended {period_end} vs FY ended {prior_end}"
 
-        gross_margin = None
+        # 2. Gross Profit & Cost of Revenue
+        gp_tag, annual_gp = self._find_best_annual_facts(us_gaap, GROSS_PROFIT_TAGS)
+        cost_tag, annual_cost = self._find_best_annual_facts(us_gaap, COST_OF_REVENUE_TAGS)
+
+        # Current period Gross Margin
+        cur_gp_val = None
+        cur_cost_val = None
         margin_tag_used = None
         cost_tag_used = None
 
-        if matching_gp is not None:
-            gp_val = float(matching_gp["val"])
-            gross_margin = round((gp_val / revenue_val) * 100.0, 1)
-            margin_tag_used = best_gp_tag
-        else:
-            # Fallback: (Revenue - CostOfRevenue) / Revenue * 100 (Condition 8)
-            best_cost_tag = None
-            matching_cost = None
-            for tag in COST_OF_REVENUE_TAGS:
-                if tag in us_gaap and "units" in us_gaap[tag]:
-                    units = us_gaap[tag]["units"]
-                    if "USD" in units:
-                        annual_cost = self._filter_annual_10k(units["USD"])
-                        match = next(
-                            (e for e in annual_cost if e.get("end") == period_end or e.get("fy") == fy),
-                            None,
-                        )
-                        if match and match.get("val") is not None:
-                            best_cost_tag = tag
-                            matching_cost = match
-                            break
+        if annual_gp and cur_end in annual_gp:
+            cur_gp_val = float(annual_gp[cur_end]["val"])
+            margin_tag_used = gp_tag
+        if annual_cost and cur_end in annual_cost:
+            cur_cost_val = float(annual_cost[cur_end]["val"])
+            cost_tag_used = cost_tag
 
-            if matching_cost is not None:
-                cost_val = float(matching_cost["val"])
-                gp_calc = revenue_val - cost_val
-                gross_margin = round((gp_calc / revenue_val) * 100.0, 1)
-                margin_tag_used = f"Computed: ({rev_tag} - {best_cost_tag})"
-                cost_tag_used = best_cost_tag
+        if cur_gp_val is None and cur_cost_val is not None:
+            cur_gp_val = revenue_val - cur_cost_val
+            margin_tag_used = f"Computed: ({rev_tag} - {cost_tag})"
 
-        # Period label with exact end date (Condition 7)
+        gross_margin = round((cur_gp_val / revenue_val) * 100.0, 1) if cur_gp_val is not None else None
+
+        # Prior period Gross Margin
+        prior_gp_val = None
+        prior_cost_val = None
+        prior_gross_margin = None
+
+        if prior_end:
+            if annual_gp and prior_end in annual_gp:
+                prior_gp_val = float(annual_gp[prior_end]["val"])
+            if annual_cost and prior_end in annual_cost:
+                prior_cost_val = float(annual_cost[prior_end]["val"])
+            if prior_gp_val is None and prior_cost_val is not None and prior_rev_val is not None:
+                prior_gp_val = prior_rev_val - prior_cost_val
+            if prior_gp_val is not None and prior_rev_val:
+                prior_gross_margin = round((prior_gp_val / prior_rev_val) * 100.0, 1)
+
         period_display = f"FY {fy} (ended {period_end})"
         rev_in_billions = round(revenue_val / 1e9, 2)
+        gp_in_billions = round(cur_gp_val / 1e9, 2) if cur_gp_val is not None else None
+        cost_in_billions = round(cur_cost_val / 1e9, 2) if cur_cost_val is not None else None
+
+        prior_rev_in_billions = round(prior_rev_val / 1e9, 2) if prior_rev_val is not None else None
+        prior_gp_in_billions = round(prior_gp_val / 1e9, 2) if prior_gp_val is not None else None
+        prior_cost_in_billions = round(prior_cost_val / 1e9, 2) if prior_cost_val is not None else None
 
         return {
             "ticker": clean_ticker,
@@ -295,18 +380,39 @@ class XBRLParser:
             "revenue_period": period_display,
             "revenue_accession": accn,
             "revenue_tag": rev_tag_used,
+            "gross_profit": gp_in_billions,
+            "gross_profit_raw": cur_gp_val,
+            "gross_profit_label": f"${gp_in_billions}B" if gp_in_billions is not None else None,
+            "gross_profit_tag": gp_tag,
+            "cost_of_revenue": cost_in_billions,
+            "cost_of_revenue_raw": cur_cost_val,
+            "cost_label": f"${cost_in_billions}B" if cost_in_billions is not None else None,
+            "cost_tag": cost_tag_used or cost_tag,
             "gross_margin": gross_margin,
             "margin_label": f"{gross_margin}%" if gross_margin is not None else "N/A",
             "margin_source": "SEC filing",
             "margin_period": period_display,
             "margin_accession": accn,
             "margin_tag": margin_tag_used,
-            "cost_tag": cost_tag_used,
             "growth_yoy": growth_yoy,
             "growth_label": f"{growth_yoy:+}%" if growth_yoy is not None else "N/A",
             "growth_source": "SEC filing",
             "growth_period": growth_period,
             "growth_accession": accn,
+            "prior_fiscal_year": prior_fy,
+            "prior_period_end_date": prior_end,
+            "prior_accession_number": prior_accn,
+            "prior_revenue": prior_rev_in_billions,
+            "prior_revenue_raw": prior_rev_val,
+            "prior_revenue_label": f"${prior_rev_in_billions}B" if prior_rev_in_billions is not None else None,
+            "prior_gross_profit": prior_gp_in_billions,
+            "prior_gross_profit_raw": prior_gp_val,
+            "prior_gross_profit_label": f"${prior_gp_in_billions}B" if prior_gp_in_billions is not None else None,
+            "prior_cost_of_revenue": prior_cost_in_billions,
+            "prior_cost_raw": prior_cost_val,
+            "prior_cost_label": f"${prior_cost_in_billions}B" if prior_cost_in_billions is not None else None,
+            "prior_gross_margin": prior_gross_margin,
+            "prior_margin_label": f"{prior_gross_margin}%" if prior_gross_margin is not None else None,
             "primary_driver": None,
             "driver_source": None,
             "driver_period": None,

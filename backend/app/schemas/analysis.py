@@ -28,8 +28,21 @@ class CustomQueryRequest(BaseModel):
 
 
 class SourceEvidenceNode(BaseModel):
+    ticker: str | None = None
+    form: str | None = "10-K"
+    fiscal_year: int | str | None = None
+    period_end: str | None = None
+    section: str | None = None
+    accession_number: str | None = None
+    quote: str = ""
+    retrieval_score: float | None = Field(
+        None, description="Dense/BM25 Reciprocal Rank Fusion retrieval score"
+    )
+    rerank_score: float | None = Field(
+        None, description="CrossEncoder reranking score"
+    )
     score: float | None = None
-    text: str
+    text: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -45,6 +58,10 @@ class AnalysisResponse(BaseModel):
         None, description="Structured financial metrics or null"
     )
     sources: list[SourceEvidenceNode] = Field(default_factory=list)
+    unsupported_numbers: list[str] = Field(
+        default_factory=list,
+        description="Numerical claims in the answer not supported by source filings",
+    )
     is_sample: bool = Field(False, description="Whether this response uses sample data")
 
 
@@ -57,6 +74,10 @@ class ComparisonResponse(BaseModel):
         default_factory=list, description="Side-by-side KPI comparison data for charts"
     )
     sources: list[SourceEvidenceNode] = Field(default_factory=list)
+    unsupported_numbers: list[str] = Field(
+        default_factory=list,
+        description="Numerical claims in the answer not supported by source filings",
+    )
     is_sample: bool = Field(False, description="Whether this response uses sample data")
 
 
@@ -64,3 +85,7 @@ class CustomQueryResponse(BaseModel):
     prompt: str
     report: str
     sources: list[SourceEvidenceNode] = Field(default_factory=list)
+    unsupported_numbers: list[str] = Field(
+        default_factory=list,
+        description="Numerical claims in the answer not supported by source filings",
+    )

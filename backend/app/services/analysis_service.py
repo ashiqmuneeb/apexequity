@@ -1,3 +1,5 @@
+import re
+
 from fastapi import HTTPException
 
 from app.core.config import settings
@@ -9,31 +11,45 @@ from app.schemas.analysis import (
     SourceEvidenceNode,
 )
 from app.services.metrics_service import metrics_service
-from app.services.rag_engine import rag_engine_service
+from app.services.number_validator import number_validator
+from app.services.rag_engine import QA_PROMPT_TEMPLATE, rag_engine_service
+from app.services.retrieval_service import retrieval_service
+from app.services.sec_service import format_verified_facts
+
+
+KNOWN_TICKERS = {"NVDA", "MSFT", "AAPL", "GOOGL", "AMD"}
+COMPANY_TICKER_MAP = {
+    "nvidia": "NVDA",
+    "microsoft": "MSFT",
+    "apple": "AAPL",
+    "google": "GOOGL",
+    "alphabet": "GOOGL",
+    "amd": "AMD",
+    "advanced micro devices": "AMD",
+}
 
 
 class AnalysisService:
-    """Orchestrates financial research inquiries, comparative evaluations, and custom queries.
+    """Orchestrates institutional financial research reports, comparative head-to-head evaluations,
 
-    Uses metrics_service for grounded data and rag_engine_service for grounded citation RAG.
+    and custom semantic queries grounded by audited XBRL facts and hybrid retrieval.
     """
 
     @staticmethod
-    def _extract_sources(response) -> list[SourceEvidenceNode]:
-        """Extracts source node snippets, relevance scores, and metadata from RAG response."""
-        sources: list[SourceEvidenceNode] = []
-        if hasattr(response, "source_nodes"):
-            for node in response.source_nodes:
-                text = node.node.get_text()
-                snippet = text[:320] + "..." if len(text) > 320 else text
-                sources.append(
-                    SourceEvidenceNode(
-                        score=getattr(node, "score", None),
-                        text=snippet,
-                        metadata=getattr(node.node, "metadata", {}),
-                    )
-                )
-        return sources
+    def _format_source_passage(idx: int, src: SourceEvidenceNode) -> str:
+        """Formats a single source passage with citation index and filing metadata."""
+        meta_parts = []
+        if src.section:
+            meta_parts.append(f"Section: {src.section}")
+        if src.form:
+            meta_parts.append(f"Form: {src.form}")
+        if src.fiscal_year:
+            meta_parts.append(f"Fiscal Year: {src.fiscal_year}")
+        if src.accession_number:
+            meta_parts.append(f"Accession: {src.accession_number}")
+
+        header = f"[{idx}] Source: {src.ticker} 10-K (" + ", ".join(meta_parts) + ")"
+        return f"{header}\n{src.quote}"
 
     def analyze_single_stock(
         self,
@@ -41,7 +57,7 @@ class AnalysisService:
         custom_prompt: str | None = None,
         groq_api_key: str | None = None,
     ) -> AnalysisResponse:
-        """Executes a deep-dive financial analysis for a single stock with ticker filtering."""
+        """Executes a deep-dive financial analysis for a single stock with audited XBRL facts injection."""
         clean_ticker = ticker.strip().upper()
         if not clean_ticker:
             raise HTTPException(
@@ -57,12 +73,11 @@ class AnalysisService:
                 detail=f"No documents ingested for {clean_ticker} yet. Add one in the Filings tab.",
             )
 
-        # Apply ticker metadata filter to prevent cross-stock contamination
-        engine = rag_engine_service.get_query_engine(
-            override_key=groq_api_key,
-            ticker=clean_ticker,
-        )
+        # 1. Fetch structured audited XBRL facts
+        metrics = metrics_service.get_metrics(clean_ticker)
+        facts_block = format_verified_facts(metrics)
 
+        # 2. Hybrid retrieval strictly filtered by ticker
         prompt = (
             custom_prompt.strip()
             if custom_prompt and custom_prompt.strip()
@@ -73,18 +88,48 @@ class AnalysisService:
             )
         )
 
+        sources = retrieval_service.retrieve_single(clean_ticker, prompt, top_n=5)
+
+        # 3. Assemble prompt context
+        passages = [
+            self._format_source_passage(i + 1, src) for i, src in enumerate(sources)
+        ]
+        context_str = f"{facts_block}\n\n=== RETRIEVED SOURCES ===\n" + "\n\n".join(passages)
+        full_prompt = QA_PROMPT_TEMPLATE.format(context_str=context_str, query_str=prompt)
+
         try:
             logger.info(f"Executing single stock query for: {clean_ticker}")
-            response = engine.query(prompt)
-            metrics = metrics_service.get_metrics(clean_ticker)
+            raw_answer = rag_engine_service.generate_completion(
+                full_prompt, override_key=groq_api_key
+            )
+
+            # Refusal check
+            if "not disclosed in the retrieved filings" in raw_answer.lower():
+                return AnalysisResponse(
+                    ticker=clean_ticker,
+                    prompt=prompt,
+                    report="Not disclosed in the retrieved filings.",
+                    sentiment=metrics.get("sentiment"),
+                    metrics=metrics,
+                    sources=sources,
+                    unsupported_numbers=[],
+                    is_sample=False,
+                )
+
+            # 4. Number Grounding Validation
+            source_texts = [s.quote for s in sources]
+            validated_report, unsupported = number_validator.validate(
+                raw_answer, facts_block, metrics, source_texts
+            )
 
             return AnalysisResponse(
                 ticker=clean_ticker,
                 prompt=prompt,
-                report=str(response),
+                report=validated_report,
                 sentiment=metrics.get("sentiment"),
                 metrics=metrics,
-                sources=self._extract_sources(response),
+                sources=sources,
+                unsupported_numbers=unsupported,
                 is_sample=False,
             )
         except HTTPException:
@@ -102,7 +147,7 @@ class AnalysisService:
         custom_prompt: str | None = None,
         groq_api_key: str | None = None,
     ) -> ComparisonResponse:
-        """Executes a comparative head-to-head analysis between two stocks."""
+        """Executes a comparative head-to-head analysis between two stocks with strict filing isolation."""
         clean_a = stock_a.strip().upper()
         clean_b = stock_b.strip().upper()
         if not clean_a or not clean_b:
@@ -125,8 +170,6 @@ class AnalysisService:
                 detail=f"No documents ingested for {', '.join(missing)} yet. Add one in the Filings tab.",
             )
 
-        engine = rag_engine_service.get_query_engine(override_key=groq_api_key)
-
         prompt = (
             custom_prompt.strip()
             if custom_prompt and custom_prompt.strip()
@@ -137,14 +180,64 @@ class AnalysisService:
             )
         )
 
+        # 1. Fetch structured XBRL facts for both stocks
+        meta_a = metrics_service.get_metrics(clean_a)
+        meta_b = metrics_service.get_metrics(clean_b)
+        facts_a = format_verified_facts(meta_a)
+        facts_b = format_verified_facts(meta_b)
+
+        # 2. Strict isolated retrieval: 5 chunks per company
+        sources_a, sources_b = retrieval_service.retrieve_compare(
+            clean_a, clean_b, prompt, top_n=5
+        )
+
+        # Build numbered citations: [1]..[5] for stock A, [6]..[10] for stock B
+        passages_a = [
+            self._format_source_passage(i + 1, src) for i, src in enumerate(sources_a)
+        ]
+        offset = len(sources_a)
+        passages_b = [
+            self._format_source_passage(offset + i + 1, src)
+            for i, src in enumerate(sources_b)
+        ]
+
+        all_sources = sources_a + sources_b
+
+        context_str = (
+            f"{facts_a}\n\n{facts_b}\n\n"
+            f"=== RETRIEVED SOURCES FOR {clean_a} ===\n"
+            + "\n\n".join(passages_a)
+            + f"\n\n=== RETRIEVED SOURCES FOR {clean_b} ===\n"
+            + "\n\n".join(passages_b)
+        )
+
+        full_prompt = QA_PROMPT_TEMPLATE.format(context_str=context_str, query_str=prompt)
+
         try:
             logger.info(
                 f"Executing comparative analysis between {clean_a} and {clean_b}"
             )
-            response = engine.query(prompt)
+            raw_answer = rag_engine_service.generate_completion(
+                full_prompt, override_key=groq_api_key
+            )
 
-            meta_a = metrics_service.get_metrics(clean_a)
-            meta_b = metrics_service.get_metrics(clean_b)
+            # Refusal check
+            if "not disclosed in the retrieved filings" in raw_answer.lower():
+                report_text = "Not disclosed in the retrieved filings."
+                unsupported = []
+            else:
+                combined_facts = f"{facts_a}\n\n{facts_b}"
+                source_texts = [s.quote for s in all_sources]
+                # Combined metrics for validator
+                merged_metrics = {}
+                for k, v in meta_a.items():
+                    merged_metrics[f"{clean_a}_{k}"] = v
+                for k, v in meta_b.items():
+                    merged_metrics[f"{clean_b}_{k}"] = v
+
+                report_text, unsupported = number_validator.validate(
+                    raw_answer, combined_facts, merged_metrics, source_texts
+                )
 
             comparison_chart_data = [
                 {
@@ -174,9 +267,10 @@ class AnalysisService:
                 stock_a=clean_a,
                 stock_b=clean_b,
                 prompt=prompt,
-                report=str(response),
+                report=report_text,
                 comparison_metrics=comparison_chart_data,
-                sources=self._extract_sources(response),
+                sources=all_sources,
+                unsupported_numbers=unsupported,
                 is_sample=False,
             )
         except HTTPException:
@@ -187,33 +281,87 @@ class AnalysisService:
                 status_code=500, detail=f"Comparative analysis failed: {str(e)}"
             )
 
+    @staticmethod
+    def _detect_ticker_in_query(query: str) -> str | None:
+        """Extracts primary ticker symbol from natural language query."""
+        words = re.findall(r"\b[A-Za-z0-9_-]+\b", query)
+        for w in words:
+            up = w.upper()
+            if up in KNOWN_TICKERS:
+                return up
+            low = w.lower()
+            if low in COMPANY_TICKER_MAP:
+                return COMPANY_TICKER_MAP[low]
+        return None
+
     def custom_query(
         self,
         prompt: str,
         groq_api_key: str | None = None,
     ) -> CustomQueryResponse:
-        """Executes a free-form semantic query across the financial corpus."""
+        """Executes a natural language query with ticker metadata filtering and strict refusal path."""
         clean_prompt = prompt.strip()
         if not clean_prompt:
             raise HTTPException(status_code=400, detail="Query prompt cannot be empty.")
 
-        if not settings.ARTICLES_DIR.exists() or not any(
-            settings.ARTICLES_DIR.glob("*.txt")
-        ):
-            raise HTTPException(
-                status_code=404,
-                detail="No documents ingested yet. Add one in the Filings tab.",
-            )
+        detected_ticker = self._detect_ticker_in_query(clean_prompt)
+        facts_block = ""
+        metrics = None
 
-        engine = rag_engine_service.get_query_engine(override_key=groq_api_key)
+        if detected_ticker:
+            try:
+                metrics = metrics_service.get_metrics(detected_ticker)
+                facts_block = format_verified_facts(metrics)
+            except Exception as e:
+                logger.debug(f"Could not load facts for detected ticker {detected_ticker}: {e}")
+
+        # Retrieve relevant chunks
+        if detected_ticker:
+            sources = retrieval_service.retrieve_single(detected_ticker, clean_prompt, top_n=5)
+        else:
+            candidates = retrieval_service.retrieve_candidates_for_ticker("ALL", clean_prompt)
+            sources = retrieval_service.rerank_and_select(clean_prompt, candidates, top_n=5)
+
+        passages = [
+            self._format_source_passage(i + 1, src) for i, src in enumerate(sources)
+        ]
+        context_str = (
+            (facts_block + "\n\n" if facts_block else "")
+            + "=== RETRIEVED SOURCES ===\n"
+            + "\n\n".join(passages)
+        )
+        full_prompt = QA_PROMPT_TEMPLATE.format(context_str=context_str, query_str=clean_prompt)
 
         try:
             logger.info(f"Executing custom inquiry: {clean_prompt[:60]}...")
-            response = engine.query(clean_prompt)
+            raw_answer = rag_engine_service.generate_completion(
+                full_prompt, override_key=groq_api_key
+            )
+
+            # Refusal check (Condition 8)
+            clean_ans = raw_answer.strip()
+            if (
+                clean_ans.lower().startswith("not disclosed in the retrieved filings")
+                or "not disclosed in the retrieved filings" in clean_ans.lower()
+            ):
+                return CustomQueryResponse(
+                    prompt=clean_prompt,
+                    report="Not disclosed in the retrieved filings.",
+                    sources=sources,
+                    unsupported_numbers=[],
+                )
+
+            # Number validation
+            source_texts = [s.quote for s in sources]
+            validated_report, unsupported = number_validator.validate(
+                raw_answer, facts_block, metrics, source_texts
+            )
+
             return CustomQueryResponse(
                 prompt=clean_prompt,
-                report=str(response),
-                sources=self._extract_sources(response),
+                report=validated_report,
+                sources=sources,
+                unsupported_numbers=unsupported,
             )
         except HTTPException:
             raise

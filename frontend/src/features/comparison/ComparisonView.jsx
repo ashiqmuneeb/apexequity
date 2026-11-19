@@ -456,22 +456,36 @@ export default function ComparisonView({ availableTickers = [], onOpenKeyModal, 
               </button>
 
               {showSources && (
-                <div className="mt-3 space-y-2">
+                <div className="mt-3 space-y-2.5">
                   {result.sources.map((src, i) => (
                     <div
                       key={i}
-                      className="p-3 bg-white rounded-lg border border-slate-200 text-xs text-slate-700 space-y-1 shadow-xs"
+                      className="p-3 bg-white rounded-lg border border-slate-200 text-xs text-slate-700 space-y-1.5 shadow-xs"
                     >
-                      <div className="flex items-center justify-between font-mono text-[10px] text-slate-500">
-                        <span className="font-bold text-[#01257D]">Citation [{i + 1}]</span>
-                        {src.score != null && (
-                          <span className="bg-blue-50 text-[#01257D] px-2 py-0.5 rounded border border-blue-200 font-bold">
-                            Score: {src.score.toFixed(3)}
-                          </span>
-                        )}
+                      <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] text-slate-500">
+                        <span className="font-bold text-[#01257D]">
+                          Citation [{i + 1}] &bull; {src.ticker || src.metadata?.ticker || ''} &bull; {src.section || src.metadata?.section || 'Item 1'} ({src.form || '10-K'} FY{src.fiscal_year || src.metadata?.fiscal_year || ''})
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {src.rerank_score != null && (
+                            <span className="bg-indigo-50 text-indigo-800 px-2 py-0.5 rounded border border-indigo-200 font-bold">
+                              Rerank score: {src.rerank_score.toFixed(3)}
+                            </span>
+                          )}
+                          {src.retrieval_score != null && (
+                            <span className="bg-blue-50 text-[#01257D] px-2 py-0.5 rounded border border-blue-200 font-bold">
+                              Retrieval score: {src.retrieval_score.toFixed(4)}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <p className="font-mono text-[11px] leading-relaxed text-slate-800">
-                        {src.text}
+                      {src.accession_number && (
+                        <div className="text-[10px] text-slate-500 font-mono">
+                          Accession: {src.accession_number}
+                        </div>
+                      )}
+                      <p className="font-mono text-[11px] leading-relaxed text-slate-800 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                        {src.quote || src.text}
                       </p>
                     </div>
                   ))}

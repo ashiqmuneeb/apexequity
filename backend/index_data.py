@@ -4,9 +4,15 @@ Run via: python index_data.py
 """
 
 import sys
+from pathlib import Path
 
-from app.core.logger import logger
-from app.services.article_service import article_service
+
+BACKEND_DIR = Path(__file__).resolve().parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from app.core.logger import logger  # noqa: E402
+from app.services.article_service import article_service  # noqa: E402
 
 
 def main():

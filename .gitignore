@@ -38,6 +38,13 @@ __pycache__/
 # Local-only documents with unverified claims
 ApexEquity_Project_and_Interview_Guide.pdf
 
+# Evaluation cache (never commit model response cache)
+/backend/eval/cache/
+eval/cache/
+!/backend/eval/golden.jsonl
+!/backend/eval/results/latest.json
+!/docs/EVALUATION.md
+
 # Logs
 *.log
 logs/

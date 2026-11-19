@@ -16,6 +16,9 @@ __pycache__/
 /storage/
 /data/
 /articles/*_10K.txt
+/eval/cache/
+!/eval/golden.jsonl
+!/eval/results/latest.json
 
 # Databases & Archives
 *.db

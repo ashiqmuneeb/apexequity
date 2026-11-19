@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     BACKEND_PATH: Path = BACKEND_DIR
     ARTICLES_DIR: Path = BACKEND_DIR / "articles"
     STORAGE_DIR: Path = BACKEND_DIR / "storage"
+    CHROMA_DIR: Path = BACKEND_DIR / "storage" / "chroma"
     SEC_CACHE_DIR: Path = BACKEND_DIR / "storage" / "sec_cache"
     SEC_METRICS_FILE: Path = BACKEND_DIR / "storage" / "sec_metrics.json"
     FRONTEND_DIST_DIR: Path = BACKEND_DIR.parent / "frontend" / "dist"
@@ -45,8 +46,14 @@ class Settings(BaseSettings):
     DEFAULT_EMBED_MODEL: str = "BAAI/bge-small-en-v1.5"
     TEMPERATURE: float = 0.1
     CHUNK_SIZE: int = 512
-    CHUNK_OVERLAP: int = 50
-    SIMILARITY_TOP_K: int = 3
+    CHUNK_OVERLAP: int = 64
+    SIMILARITY_TOP_K: int = 5
+    DENSE_TOP_K: int = 10
+    BM25_TOP_K: int = 10
+    TOP_N_RERANK: int = 5
+    RRF_K: int = 60
+    RERANKER_ENABLED: bool = True
+    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # Security & CORS
     ALLOWED_ORIGINS: str = (

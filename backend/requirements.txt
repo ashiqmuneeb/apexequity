@@ -8,6 +8,9 @@ llama-index==0.14.25
 llama-index-core==0.14.25
 llama-index-llms-groq==0.6.1
 llama-index-embeddings-huggingface==0.8.0
+llama-index-vector-stores-chroma==0.7.0
+chromadb==1.5.9
+rank-bm25==0.2.2
 yfinance==1.8.0
 tenacity==9.2.1
 pytest==9.2.0

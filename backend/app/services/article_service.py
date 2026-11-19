@@ -3,17 +3,13 @@ import json
 from pathlib import Path
 
 from fastapi import HTTPException
-from llama_index.core import (
-    Settings,
-    SimpleDirectoryReader,
-    VectorStoreIndex,
-)
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from app.core.config import settings
 from app.core.logger import logger
 from app.schemas.article import ArticleItem
+from app.services.chunking_service import section_chunker
 from app.services.rag_engine import rag_engine_service
+from app.services.retrieval_service import retrieval_service
 
 
 class ArticleService:
@@ -115,7 +111,7 @@ class ArticleService:
         return f"{clean_ticker}.txt"
 
     def delete_article(self, ticker: str) -> None:
-        """Deletes an article file for a given ticker and re-indexes storage."""
+        """Deletes an article file for a given ticker and removes it from Chroma vector store."""
         clean_ticker = ticker.strip().upper()
         file_path = settings.ARTICLES_DIR / f"{clean_ticker}.txt"
         if not file_path.exists():
@@ -126,10 +122,22 @@ class ArticleService:
         file_path.unlink()
         logger.info(f"Article file deleted for ticker: {clean_ticker}")
 
-        # Re-index to ensure deleted document nodes are purged from vector store
-        self.build_and_persist_index(force_rebuild=True)
+        # Purge chunks from Chroma
+        try:
+            col = retrieval_service.get_collection()
+            col.delete(where={"ticker": clean_ticker})
+        except Exception as e:
+            logger.warning(f"Error purging {clean_ticker} from Chroma: {e}")
+
+        # Remove from stored hashes
+        stored_hashes = self._load_stored_hashes()
+        stored_hashes.pop(f"{clean_ticker}.txt", None)
+        self._save_stored_hashes(stored_hashes)
+
+        # Invalidate retrieval caches
+        retrieval_service.invalidate_cache()
         rag_engine_service.invalidate_cache()
-        logger.info(f"Vector storage re-indexed after deleting {clean_ticker}")
+        logger.info(f"Vector storage updated after deleting {clean_ticker}")
 
     def fetch_live_stock_data(self, ticker: str) -> dict:
         """Fetches real-time financial statements and company profile from Yahoo Finance,
@@ -216,13 +224,10 @@ class ArticleService:
     def build_and_persist_index(
         self, force_rebuild: bool = False
     ) -> tuple[int, list[str]]:
-        """Reads corpus files, attaches ticker metadata, strips absolute paths,
+        """Parses corpus files using section-aware chunker, indexes into persistent Chroma,
 
-        checks file hashes to avoid rebuilding unaffected documents, and persists to storage.
+        re-embeds only files whose hash changed, and logs step-by-step progress.
         """
-        data_dir = settings.ARTICLES_DIR
-        storage_dir = settings.STORAGE_DIR
-
         indexable_files = self._get_indexable_files()
         file_names = [f.name for f in indexable_files]
         if not indexable_files:
@@ -231,51 +236,92 @@ class ArticleService:
 
         current_hashes = self._compute_hashes()
         stored_hashes = self._load_stored_hashes()
-        index_exists = storage_dir.exists() and any(storage_dir.iterdir())
+        col = retrieval_service.get_collection()
 
-        # If hashes match and storage exists and not forced, avoid redundant re-embedding
-        if not force_rebuild and index_exists and current_hashes == stored_hashes:
+        # Determine which files need indexing
+        collection_empty = col.count() == 0
+        files_to_index: list[Path] = []
+        for f in indexable_files:
+            if force_rebuild or collection_empty or stored_hashes.get(f.name) != current_hashes.get(f.name):
+                files_to_index.append(f)
+
+        # Handle deleted files
+        deleted_file_names = set(stored_hashes.keys()) - set(current_hashes.keys())
+        for dfn in deleted_file_names:
+            logger.info(f"Removing deleted file '{dfn}' from vector store...")
+            try:
+                col.delete(where={"file_name": dfn})
+            except Exception as e:
+                logger.warning(f"Error deleting chunks for {dfn}: {e}")
+            stored_hashes.pop(dfn, None)
+
+        if not files_to_index and not deleted_file_names and not force_rebuild and col.count() > 0:
             logger.info(
-                "Article hashes match persisted vector storage. Skipping embedding rebuild."
+                "Article hashes match persisted Chroma vector storage. Skipping embedding rebuild."
             )
-            return len(file_names), file_names
+            count = col.count()
+            return count, file_names
 
         logger.info(
-            f"Loading {len(indexable_files)} document(s) from {data_dir}..."
+            f"Indexing {len(files_to_index)} changed/new document(s) of {len(indexable_files)} total..."
         )
-        documents = SimpleDirectoryReader(
-            input_files=[str(p) for p in indexable_files]
-        ).load_data()
 
-        # Attach ticker metadata and strip absolute paths
-        for doc in documents:
-            file_name = (
-                doc.metadata.get("file_name")
-                or Path(doc.metadata.get("file_path", "")).name
+        embed_model = retrieval_service._get_embed_model()
+        total_indexed_chunks = 0
+
+        for idx, f in enumerate(files_to_index):
+            logger.info(f"[{idx + 1}/{len(files_to_index)}] Processing {f.name}...")
+            content = f.read_text(encoding="utf-8")
+
+            # Remove prior chunks for this file if present
+            try:
+                col.delete(where={"file_name": f.name})
+            except Exception:
+                pass
+
+            nodes = section_chunker.chunk_file(f, content)
+            if not nodes:
+                logger.warning(f"No chunks extracted from {f.name}")
+                stored_hashes[f.name] = current_hashes[f.name]
+                continue
+
+            logger.info(
+                f"[{idx + 1}/{len(files_to_index)}] Embedding {len(nodes)} chunks for {f.name} "
+                f"with local {settings.DEFAULT_EMBED_MODEL} on CPU..."
             )
-            ticker = Path(file_name).stem.split("_")[0].upper()
-            doc.metadata["ticker"] = ticker
-            doc.metadata["file_name"] = file_name
-            # Strip absolute path for hygiene and privacy
-            doc.metadata.pop("file_path", None)
 
-        logger.info(
-            f"Generating embeddings using local {settings.DEFAULT_EMBED_MODEL}..."
-        )
-        embed_model = HuggingFaceEmbedding(model_name=settings.DEFAULT_EMBED_MODEL)
-        Settings.embed_model = embed_model
-        Settings.llm = None  # Indexing does not need active LLM calls
+            # Batch embeddings to avoid memory spikes
+            batch_size = 32
+            for b_idx in range(0, len(nodes), batch_size):
+                batch_nodes = nodes[b_idx : b_idx + batch_size]
+                texts = [n.get_content() for n in batch_nodes]
+                embeddings = embed_model.get_text_embedding_batch(texts)
 
-        index = VectorStoreIndex.from_documents(documents, embed_model=embed_model)
+                ids = [n.node_id for n in batch_nodes]
+                metas = [n.metadata for n in batch_nodes]
 
-        logger.info(f"Persisting vector store to {storage_dir}...")
-        index.storage_context.persist(persist_dir=str(storage_dir))
-        self._save_stored_hashes(current_hashes)
+                col.add(
+                    ids=ids,
+                    embeddings=embeddings,
+                    documents=texts,
+                    metadatas=metas,
+                )
 
-        # Invalidate any cached query engine
+            total_indexed_chunks += len(nodes)
+            stored_hashes[f.name] = current_hashes[f.name]
+            logger.info(
+                f"[{idx + 1}/{len(files_to_index)}] Finished {f.name}: {len(nodes)} chunks stored."
+            )
+
+        self._save_stored_hashes(stored_hashes)
+
+        # Invalidate in-memory BM25 index and query caches
+        retrieval_service.invalidate_cache()
         rag_engine_service.invalidate_cache()
-        logger.info(f"Indexing complete! {len(documents)} document chunk(s) saved.")
-        return len(documents), file_names
+
+        total_chunks = col.count()
+        logger.info(f"Indexing complete! Collection contains {total_chunks} chunk(s).")
+        return total_chunks, file_names
 
 
 article_service = ArticleService()

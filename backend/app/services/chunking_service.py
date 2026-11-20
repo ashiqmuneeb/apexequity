@@ -8,10 +8,11 @@ from app.core.config import settings
 from app.core.logger import logger
 
 
-def is_valid_body_chunk(text: str, min_words: int = 40) -> bool:
+def is_valid_body_chunk(text: str, min_words: int = 40, exempt_tables: bool | None = None) -> bool:
     """Checks whether a chunk contains genuine body text and is not merely a heading or TOC snippet.
 
-    Skips chunks that contain only a heading and drops chunks with fewer than 40 words of body text.
+    Skips chunks that contain only a heading and drops chunks with fewer than 40 words of body text,
+    unless table exemption is enabled and the chunk represents a concise numerical/financial table (Condition 5).
     """
     clean_text = text.strip()
     if not clean_text:
@@ -34,6 +35,15 @@ def is_valid_body_chunk(text: str, min_words: int = 40) -> bool:
 
     body_text = " ".join(body_lines)
     words = re.findall(r"\b[A-Za-z0-9'-]+\b", body_text)
+
+    # Condition 5: Table-chunk exemption (many numbers, few words or table delimiters)
+    should_exempt = exempt_tables if exempt_tables is not None else getattr(settings, "TABLE_EXEMPTION_ENABLED", True)
+    if should_exempt:
+        numbers = re.findall(r"[\$]?\d[\d,]*\.?\d*%?", body_text)
+        # If chunk contains >= 3 numeric figures or table formatting, exempt from word threshold
+        if len(numbers) >= 3 or ("|" in body_text and len(numbers) >= 2):
+            return len(words) >= 5
+
     return len(words) >= min_words
 
 

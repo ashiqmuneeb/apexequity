@@ -1,5 +1,7 @@
+import json
 import re
 import time
+from pathlib import Path
 from typing import Any
 
 import chromadb
@@ -12,6 +14,31 @@ from app.core.config import settings
 from app.core.logger import logger
 from app.schemas.analysis import SourceEvidenceNode
 from app.services.chunking_service import is_valid_body_chunk
+
+
+def expand_query_generic(query: str) -> str:
+    """Expands query with small generic financial vocabulary from synonyms.json without golden leakage (Condition 3)."""
+    if not getattr(settings, "QUERY_EXPANSION_ENABLED", True):
+        return query
+    synonyms_file = Path(__file__).resolve().parent.parent / "core" / "synonyms.json"
+    if not synonyms_file.exists():
+        return query
+    try:
+        syn_data = json.loads(synonyms_file.read_text(encoding="utf-8"))
+        expansions: list[str] = []
+        q_lower = query.lower()
+        for root_word, info in syn_data.items():
+            if re.search(rf"\b{re.escape(root_word)}\b", q_lower):
+                # Add up to 2 most generic synonyms
+                for s in info.get("synonyms", [])[:2]:
+                    if s.lower() not in q_lower:
+                        expansions.append(s)
+        if expansions:
+            expanded = f"{query} {' '.join(expansions)}"
+            return expanded
+    except Exception as e:
+        logger.debug(f"Query expansion failed: {e}")
+    return query
 
 
 def extract_best_matching_quote(chunk_text: str, query: str, max_chars: int = 300) -> str:
@@ -102,6 +129,8 @@ class RetrievalService:
         self._bm25_cache: dict[str, tuple[BM25Okapi, list[dict[str, Any]]]] = {}
         # Stores last measured reranker latency in seconds
         self.last_rerank_latency: float = 0.0
+        self.last_boost_changed_top5: bool = False
+        self.total_boost_changed_top5_count: int = 0
 
     def invalidate_cache(self) -> None:
         """Clears in-memory BM25 index and cached client when vector index is modified."""
@@ -218,6 +247,7 @@ class RetrievalService:
 
         # Check for explicit year in query
         target_year = self.extract_target_year(query)
+        search_query = expand_query_generic(query)
 
         # 1. Dense retrieval
         where_dense: dict[str, Any] = {"ticker": clean_ticker}
@@ -230,7 +260,7 @@ class RetrievalService:
             }
 
         embed_model = self._get_embed_model()
-        query_embedding = embed_model.get_query_embedding(query)
+        query_embedding = embed_model.get_query_embedding(search_query)
 
         try:
             dense_res = col.query(
@@ -272,7 +302,7 @@ class RetrievalService:
 
         # 2. BM25 retrieval
         bm25, chunk_records = self._get_or_build_bm25(clean_ticker)
-        tokenized_q = self._tokenize(query)
+        tokenized_q = self._tokenize(search_query)
 
         bm25_scores = bm25.get_scores(tokenized_q)
         top_indices = sorted(
@@ -320,9 +350,30 @@ class RetrievalService:
                     "dense_score": None,
                 }
 
+        # Track top-5 IDs before boost (Condition 2)
+        unboosted_top5_ids = [
+            c["id"]
+            for c in sorted(fused.values(), key=lambda x: x["retrieval_score"], reverse=True)[:5]
+        ]
+
+        # Section-aware priority boosting for risk-type questions (Condition 2)
+        is_risk_query = bool(re.search(r"\b(risks?|uncertaint(?:y|ies)|threats?)\b", query, re.IGNORECASE))
+        if getattr(settings, "SECTION_BOOST_ENABLED", True) and is_risk_query:
+            boost_val = getattr(settings, "SECTION_BOOST_VALUE", 0.004)
+            for item in fused.values():
+                sec = (item.get("metadata", {}).get("section") or "").upper()
+                if "ITEM 1A" in sec:
+                    item["retrieval_score"] += boost_val
+
         sorted_candidates = sorted(
             fused.values(), key=lambda x: x["retrieval_score"], reverse=True
         )
+
+        boosted_top5_ids = [c["id"] for c in sorted_candidates[:5]]
+        self.last_boost_changed_top5 = bool(is_risk_query and unboosted_top5_ids != boosted_top5_ids)
+        if self.last_boost_changed_top5:
+            self.total_boost_changed_top5_count += 1
+
         return sorted_candidates
 
     def rerank_and_select(

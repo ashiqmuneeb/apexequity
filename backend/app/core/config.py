@@ -41,19 +41,30 @@ class Settings(BaseSettings):
     # AI Models & Retrieval Hyperparameters
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "openai/gpt-oss-120b"
-    GROQ_FALLBACK_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_FALLBACK_MODEL: str = "openai/gpt-oss-20b"
     DEFAULT_GROQ_MODEL: str = "openai/gpt-oss-120b"
     DEFAULT_EMBED_MODEL: str = "BAAI/bge-small-en-v1.5"
     TEMPERATURE: float = 0.1
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 64
     SIMILARITY_TOP_K: int = 5
-    DENSE_TOP_K: int = 10
-    BM25_TOP_K: int = 10
+    DENSE_TOP_K: int = 20
+    BM25_TOP_K: int = 20
     TOP_N_RERANK: int = 5
     RRF_K: int = 60
     RERANKER_ENABLED: bool = True
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    # Section-aware priority boosting
+    # Reasoning: Reciprocal Rank Fusion (k=60) produces base scores between ~0.0082 (rank 60)
+    # and ~0.0328 (rank 1 in both dense and BM25). An additive boost of +0.004 represents ~12-25%
+    # of a typical single-modality RRF score, providing a meaningful prior for Item 1A risk passages
+    # on risk queries without overriding strong joint dense+BM25 matches.
+    SECTION_BOOST_VALUE: float = 0.004
+    SECTION_BOOST_ENABLED: bool = True
+    QUERY_EXPANSION_ENABLED: bool = True
+    DETERMINISTIC_LOOKUP_ENABLED: bool = True
+    TABLE_EXEMPTION_ENABLED: bool = True
 
     # Security & CORS
     ALLOWED_ORIGINS: str = (

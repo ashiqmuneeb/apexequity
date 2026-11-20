@@ -64,6 +64,7 @@ class AnalysisResponse(BaseModel):
         description="Numerical claims in the answer not supported by source filings",
     )
     is_sample: bool = Field(False, description="Whether this response uses sample data")
+    path: str = Field("rag", description="Execution path: 'deterministic' or 'rag'")
 
 
 class ComparisonResponse(BaseModel):
@@ -80,6 +81,7 @@ class ComparisonResponse(BaseModel):
         description="Numerical claims in the answer not supported by source filings",
     )
     is_sample: bool = Field(False, description="Whether this response uses sample data")
+    path: str = Field("rag", description="Execution path: 'deterministic' or 'rag'")
 
 
 class CustomQueryResponse(BaseModel):
@@ -90,3 +92,4 @@ class CustomQueryResponse(BaseModel):
         default_factory=list,
         description="Numerical claims in the answer not supported by source filings",
     )
+    path: str = Field("rag", description="Execution path: 'deterministic' or 'rag'")

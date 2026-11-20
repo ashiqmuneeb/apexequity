@@ -1,0 +1,23 @@
+{
+  "supplier": {
+    "synonyms": ["vendor", "foundry", "fabrication partner", "manufacturing contractor"],
+    "rationale": "Maps general supplier inquiries to SEC 10-K disclosures regarding contract manufacturers and foundries."
+  },
+  "customer": {
+    "synonyms": ["client", "distributor", "end customer", "channel partner"],
+    "rationale": "Captures customer concentration and downstream channel disclosures commonly used in 10-K Item 1."
+  },
+  "competition": {
+    "synonyms": ["competitor", "market share", "rival", "competitive landscape"],
+    "rationale": "Aligns market competition queries with Item 1 business competition and Item 1A market risk disclosures."
+  },
+  "risk": {
+    "synonyms": ["uncertainty", "threat", "adverse impact", "vulnerability"],
+    "rationale": "Expands risk-related queries to match formal risk-factor terminology used throughout Item 1A."
+  },
+  "facility": {
+    "synonyms": ["plant", "data center", "manufacturing facility", "properties"],
+    "rationale": "Connects facility or infrastructure questions to physical property and operations disclosures."
+  }
+}
+

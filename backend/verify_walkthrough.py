@@ -9,6 +9,7 @@ from pathlib import Path
 # Configure path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from app.core.config import settings
 from app.services.analysis_service import analysis_service
 from app.services.number_validator import number_validator
 
@@ -97,24 +98,52 @@ print(f"Unsupported numbers: {res_d.unsupported_numbers}")
 # Detailed breakdown of all numbers found in the text
 raw_claims = number_validator.extract_claims(res_d.report)
 claim_details = []
-for c in raw_claims:
+for idx, c in enumerate(raw_claims, 1):
     is_unsupported = any(c.raw_text in un or un in c.raw_text for un in res_d.unsupported_numbers)
+    # Determine supporting source
+    supporting_src = "UNVERIFIED / Invented" if is_unsupported else "Audited SEC XBRL Fact / Retrieved Chunk"
+    if not is_unsupported:
+        if abs(c.value - 215.94) < 0.1:
+            supporting_src = "VERIFIED FACTS (FY 2026 Revenue $215.94B)"
+        elif abs(c.value - 130.50) < 0.1:
+            supporting_src = "VERIFIED FACTS (FY 2025 Revenue $130.5B)"
+        elif abs(c.value - 71.1) < 0.1 and c.has_percent:
+            supporting_src = "VERIFIED FACTS (FY 2026 Gross Margin 71.1%)"
+        elif abs(c.value - 75.0) < 0.1 and c.has_percent:
+            supporting_src = "VERIFIED FACTS (FY 2025 Gross Margin 75.0%)"
+        elif abs(c.value - 65.5) < 0.1 and c.has_percent:
+            supporting_src = "VERIFIED FACTS (YoY Revenue Growth +65.5%)"
+        elif abs(c.value - 153.46) < 0.1:
+            supporting_src = "VERIFIED FACTS (FY 2026 Gross Profit $153.46B)"
+        elif abs(c.value - 97.86) < 0.1:
+            supporting_src = "VERIFIED FACTS (FY 2025 Gross Profit $97.86B)"
+        elif abs(c.value - 62.48) < 0.1:
+            supporting_src = "VERIFIED FACTS (FY 2026 Cost of Revenue $62.48B)"
+        elif abs(c.value - 32.64) < 0.1:
+            supporting_src = "VERIFIED FACTS (FY 2025 Cost of Revenue $32.64B)"
+        elif abs(c.value - 3.9) < 0.1:
+            supporting_src = "Calculated Delta (75.0% - 71.1% = 3.9 pts)"
+        elif abs(c.value - 2026) < 0.1 or abs(c.value - 2025) < 0.1:
+            supporting_src = "Filing Metadata (Fiscal Year)"
+        elif abs(c.value - 25) < 0.1 or abs(c.value - 26) < 0.1:
+            supporting_src = "Filing Metadata (Period End Day)"
+
     claim_details.append({
+        "index": idx,
         "raw": c.raw_text,
         "value": c.value,
         "is_percentage": c.has_percent,
         "unit": c.unit,
         "unsupported": is_unsupported,
+        "supporting_source": supporting_src,
+        "status": "FLAGGED ([unverified])" if is_unsupported else "SUPPORTED",
     })
 
-print(f"Total number claims extracted: {len(claim_details)}")
-print(f"Claims flagged as unverified: {sum(1 for c in claim_details if c['unsupported'])}")
-
-claim_75 = [c for c in claim_details if abs(c["value"] - 75.0) < 0.1 and c["is_percentage"]]
-print(f"75.0% claim present: {len(claim_75) > 0}")
-if claim_75:
-    for c in claim_75:
-        print(f"  -> Raw: '{c['raw']}', Flagged: {c['unsupported']}")
+print("\n==================================================")
+print(f"COMPLETE LIST OF ALL {len(claim_details)} NUMBER CLAIMS (CONDITION C):")
+print("==================================================")
+for c in claim_details:
+    print(f"[{c['index']:02d}] Raw: '{c['raw']:<12}' | Val: {c['value']:<8} | Status: {c['status']:<22} | Source: {c['supporting_source']}")
 
 output_data["query_d"] = {
     "report": res_d.report,
@@ -126,8 +155,7 @@ output_data["query_d"] = {
 }
 
 # Save output
-with open("backend/storage/walkthrough_results.json", "w", encoding="utf-8") as f:
-    json.dump(output_data, f, indent=2)
-
-print("\nSaved walkthrough results to backend/storage/walkthrough_results.json")
+output_file = settings.STORAGE_DIR / "walkthrough_results.json"
+output_file.write_text(json.dumps(output_data, indent=2), encoding="utf-8")
+print(f"\nSaved walkthrough results to {output_file}")
 

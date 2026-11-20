@@ -7,8 +7,20 @@ from app.schemas.analysis import SourceEvidenceNode
 from app.services.number_validator import number_validator
 
 
-def check_phrase_in_text(phrase: str, text: str) -> bool:
-    """Case-insensitive substring match with normalized whitespace."""
+def normalize_text_for_eval(text: str) -> str:
+    """Normalizes case, whitespace, curly vs straight quotes/apostrophes, dashes, and non-breaking spaces."""
+    t = text.lower()
+    t = re.sub(r"[\u2018\u2019\u201a\u201b\u2032]", "'", t)
+    t = re.sub(r"[\u201c\u201d\u201e\u201f\u2033]", '"', t)
+    t = re.sub(r"[\u2013\u2014]", "-", t)
+    t = re.sub(r"[\u202f\u00a0]", " ", t)
+    return " ".join(t.split())
+
+
+def check_phrase_in_text(phrase: str, text: str, normalize: bool = True) -> bool:
+    """Substring match with optional full normalization (case, whitespace, curly quotes, dashes)."""
+    if normalize:
+        return normalize_text_for_eval(phrase) in normalize_text_for_eval(text)
     norm_p = " ".join(phrase.lower().split())
     norm_t = " ".join(text.lower().split())
     return norm_p in norm_t
@@ -61,6 +73,7 @@ def evaluate_retrieval_hit(
     key_phrases: list[str],
     target_item: str | None = None,
     top_k: int = 5,
+    normalize: bool = True,
 ) -> tuple[bool, bool, int | None, int | None]:
     """Computes retrieval hit status under two definitions (Condition 5):
 
@@ -78,7 +91,7 @@ def evaluate_retrieval_hit(
 
     for idx, src in enumerate(top_sources, 1):
         content = f"{src.quote} {src.text}"
-        matches = [kp for kp in key_phrases if check_phrase_in_text(kp, content)]
+        matches = [kp for kp in key_phrases if check_phrase_in_text(kp, content, normalize=normalize)]
         chunk_section = (src.section or "").strip().upper()
         target_norm = (target_item or "").strip().upper()
 
@@ -165,22 +178,30 @@ def compute_aggregate_metrics(eval_records: list[dict[str, Any]]) -> dict[str, A
     # Category slices
     numeric_records = [r for r in eval_records if r["category"] == "numeric"]
     injected_num = [r for r in numeric_records if r.get("injected", False)]
-    not_injected_num = [r for r in numeric_records if not r.get("injected", False)]
+    det_lookup_num = [r for r in numeric_records if r.get("path") == "deterministic"]
+    not_injected_num = [
+        r for r in numeric_records if not r.get("injected", False) and r.get("path") != "deterministic"
+    ]
     qual_records = [r for r in eval_records if r["category"] == "qualitative"]
     unans_records = [r for r in eval_records if r["category"] == "unanswerable"]
 
-    # 1. Retrieval Recall@5 & MRR
-    # Definition A (Key phrases hit)
-    hits_a = sum(1 for r in qual_records if r.get("hit_a", False))
-    recall_a = hits_a / len(qual_records) if qual_records else 1.0
-    mrr_a = np.mean([1.0 / r["rank_a"] if r.get("rank_a") else 0.0 for r in qual_records]) if qual_records else 1.0
+    # 1. Retrieval Recall@5 & MRR (both raw and normalized per Condition 4)
+    # Normalized (Condition 4 bug fix)
+    hits_a_norm = sum(1 for r in qual_records if r.get("hit_a_norm", r.get("hit_a", False)))
+    recall_a_norm = hits_a_norm / len(qual_records) if qual_records else 1.0
+    mrr_a_norm = np.mean([1.0 / r["rank_a_norm"] if r.get("rank_a_norm") else (1.0 / r["rank_a"] if r.get("rank_a") else 0.0) for r in qual_records]) if qual_records else 1.0
+
+    # Raw unnormalized
+    hits_a_raw = sum(1 for r in qual_records if r.get("hit_a_raw", r.get("hit_a", False)))
+    recall_a_raw = hits_a_raw / len(qual_records) if qual_records else 1.0
+    mrr_a_raw = np.mean([1.0 / r["rank_a_raw"] if r.get("rank_a_raw") else (1.0 / r["rank_a"] if r.get("rank_a") else 0.0) for r in qual_records]) if qual_records else 1.0
 
     # Definition B (Strict section hit)
     hits_b = sum(1 for r in qual_records if r.get("hit_b", False))
     recall_b = hits_b / len(qual_records) if qual_records else 1.0
     mrr_b = np.mean([1.0 / r["rank_b"] if r.get("rank_b") else 0.0 for r in qual_records]) if qual_records else 1.0
 
-    # 2. Numeric Accuracy
+    # 2. Numeric Accuracy (split into injected, deterministic lookup, and not injected per Condition 10)
     acc_overall_num = (
         sum(1 for r in numeric_records if r.get("numeric_correct", False)) / len(numeric_records)
         if numeric_records
@@ -189,6 +210,11 @@ def compute_aggregate_metrics(eval_records: list[dict[str, Any]]) -> dict[str, A
     acc_injected = (
         sum(1 for r in injected_num if r.get("numeric_correct", False)) / len(injected_num)
         if injected_num
+        else 0.0
+    )
+    acc_deterministic = (
+        sum(1 for r in det_lookup_num if r.get("numeric_correct", False)) / len(det_lookup_num)
+        if det_lookup_num
         else 0.0
     )
     acc_not_injected = (
@@ -238,14 +264,17 @@ def compute_aggregate_metrics(eval_records: list[dict[str, Any]]) -> dict[str, A
     return {
         "dataset_size": total_items,
         "retrieval": {
-            "recall_at_5_key_phrases": round(recall_a, 4),
-            "mrr_key_phrases": round(float(mrr_a), 4),
+            "recall_at_5_key_phrases": round(recall_a_norm, 4),
+            "mrr_key_phrases": round(float(mrr_a_norm), 4),
+            "recall_at_5_raw": round(recall_a_raw, 4),
+            "mrr_raw": round(float(mrr_a_raw), 4),
             "recall_at_5_strict_item": round(recall_b, 4),
             "mrr_strict_item": round(float(mrr_b), 4),
         },
         "numeric_accuracy": {
             "overall": round(acc_overall_num, 4),
             "injected_facts": round(acc_injected, 4),
+            "deterministic_lookup": round(acc_deterministic, 4),
             "not_injected": round(acc_not_injected, 4),
         },
         "citation_precision": overall_cit_precision,

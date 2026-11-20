@@ -263,3 +263,46 @@ def test_delete_and_reindex_lifecycle(tmp_path):
     finally:
         if file_path.exists():
             file_path.unlink()
+
+
+def test_deterministic_lookup_guards():
+    """Verifies deterministic lookup guards (Condition 6):
+
+    1. Wrong year outside coverage mandates exact refusal.
+    2. Missing/uncovered metrics fall back to RAG (return None).
+    3. Explanation/why/risk questions mentioning R&D fall back to RAG (return None).
+    4. Valid single metric + ticker + year returns exact audited fact and source evidence node.
+    """
+    from app.services.deterministic_lookup import deterministic_lookup_service
+
+    # 1. Wrong year outside coverage (2012 for NVDA whose coverage is 2026/2025)
+    wrong_year_q = "What was NVIDIA's R&D expense in 2012?"
+    rep_1, src_1, is_ref_1 = deterministic_lookup_service.check_deterministic_lookup("NVDA", wrong_year_q)
+    assert is_ref_1 is True
+    assert rep_1 == "Not disclosed in the retrieved filings."
+    assert len(src_1) == 0
+
+    # 2. Missing metric (e.g. carbon emissions)
+    missing_metric_q = "What was NVIDIA's scope 1 carbon emissions in fiscal year 2026?"
+    rep_2, src_2, is_ref_2 = deterministic_lookup_service.check_deterministic_lookup("NVDA", missing_metric_q)
+    assert rep_2 is None
+    assert len(src_2) == 0
+    assert is_ref_2 is False
+
+    # 3. Explanation question mentioning R&D (must go to RAG path)
+    explanation_q = "Why did NVIDIA's research and development (R&D) expense increase in fiscal year 2026?"
+    rep_3, src_3, is_ref_3 = deterministic_lookup_service.check_deterministic_lookup("NVDA", explanation_q)
+    assert rep_3 is None
+    assert len(src_3) == 0
+    assert is_ref_3 is False
+
+    # 4. Valid single metric lookup
+    valid_q = "What was NVIDIA's research and development (R&D) expense in fiscal year 2026?"
+    rep_4, src_4, is_ref_4 = deterministic_lookup_service.check_deterministic_lookup("NVDA", valid_q)
+    assert is_ref_4 is False
+    assert rep_4 is not None
+    assert "$18.5B" in rep_4 or "18.5" in rep_4
+    assert len(src_4) == 1
+    assert src_4[0].ticker == "NVDA"
+    assert src_4[0].accession_number == "0001045810-26-000021"
+    assert "ResearchAndDevelopmentExpense" in src_4[0].quote

@@ -10,6 +10,7 @@ from app.schemas.analysis import (
     CustomQueryResponse,
     SourceEvidenceNode,
 )
+from app.services.deterministic_lookup import deterministic_lookup_service
 from app.services.metrics_service import metrics_service
 from app.services.number_validator import number_validator
 from app.services.rag_engine import QA_PROMPT_TEMPLATE, rag_engine_service
@@ -77,7 +78,6 @@ class AnalysisService:
         metrics = metrics_service.get_metrics(clean_ticker)
         facts_block = format_verified_facts(metrics)
 
-        # 2. Hybrid retrieval strictly filtered by ticker
         prompt = (
             custom_prompt.strip()
             if custom_prompt and custom_prompt.strip()
@@ -88,6 +88,24 @@ class AnalysisService:
             )
         )
 
+        # Check deterministic metric lookup first (Condition 6)
+        det_report, det_sources, is_refusal = deterministic_lookup_service.check_deterministic_lookup(
+            clean_ticker, prompt
+        )
+        if det_report is not None:
+            return AnalysisResponse(
+                ticker=clean_ticker,
+                prompt=prompt,
+                report=det_report,
+                sentiment=metrics.get("sentiment"),
+                metrics=metrics,
+                sources=det_sources,
+                unsupported_numbers=[],
+                is_sample=False,
+                path="deterministic",
+            )
+
+        # 2. Hybrid retrieval strictly filtered by ticker
         sources = retrieval_service.retrieve_single(clean_ticker, prompt, top_n=5)
 
         # 3. Assemble prompt context
@@ -114,6 +132,7 @@ class AnalysisService:
                     sources=sources,
                     unsupported_numbers=[],
                     is_sample=False,
+                    path="rag",
                 )
 
             # 4. Number Grounding Validation
@@ -131,6 +150,7 @@ class AnalysisService:
                 sources=sources,
                 unsupported_numbers=unsupported,
                 is_sample=False,
+                path="rag",
             )
         except HTTPException:
             raise
@@ -309,6 +329,19 @@ class AnalysisService:
         metrics = None
 
         if detected_ticker:
+            # Check deterministic metric lookup first (Condition 6)
+            det_report, det_sources, is_refusal = deterministic_lookup_service.check_deterministic_lookup(
+                detected_ticker, clean_prompt
+            )
+            if det_report is not None:
+                return CustomQueryResponse(
+                    prompt=clean_prompt,
+                    report=det_report,
+                    sources=det_sources,
+                    unsupported_numbers=[],
+                    path="deterministic",
+                )
+
             try:
                 metrics = metrics_service.get_metrics(detected_ticker)
                 facts_block = format_verified_facts(metrics)
@@ -349,6 +382,7 @@ class AnalysisService:
                     report="Not disclosed in the retrieved filings.",
                     sources=sources,
                     unsupported_numbers=[],
+                    path="rag",
                 )
 
             # Number validation
@@ -362,6 +396,7 @@ class AnalysisService:
                 report=validated_report,
                 sources=sources,
                 unsupported_numbers=unsupported,
+                path="rag",
             )
         except HTTPException:
             raise

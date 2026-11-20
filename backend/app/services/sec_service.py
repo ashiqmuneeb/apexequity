@@ -46,6 +46,30 @@ COST_OF_REVENUE_TAGS = [
     "CostOfGoodsSold",
 ]
 
+OPERATING_INCOME_TAGS = [
+    "OperatingIncomeLoss",
+]
+
+NET_INCOME_TAGS = [
+    "NetIncomeLoss",
+    "ProfitLoss",
+]
+
+RD_EXPENSE_TAGS = [
+    "ResearchAndDevelopmentExpense",
+    "ResearchAndDevelopmentExpenseExcludingAcquiredInProcessCost",
+]
+
+CASH_AND_EQUIV_TAGS = [
+    "CashAndCashEquivalentsAtCarryingValue",
+    "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+]
+
+CAPEX_TAGS = [
+    "PaymentsToAcquirePropertyPlantAndEquipment",
+    "PaymentsToAcquireProductiveAssets",
+]
+
 
 def validate_user_agent(user_agent: str | None) -> str:
     """Validates SEC EDGAR User-Agent according to SEC policy.
@@ -186,6 +210,26 @@ def format_verified_facts(metrics: dict[str, Any]) -> str:
         lines.append(
             f"- YoY Revenue Growth: {metrics.get('growth_label')} ({metrics.get('growth_period', 'N/A')})"
         )
+    if metrics.get("operating_income_label") is not None:
+        lines.append(
+            f"- Operating Income: {metrics.get('operating_income_label')} ({metrics.get('operating_income_raw', 0):,.0f} USD) [Tag: {metrics.get('operating_income_tag', 'N/A')}]"
+        )
+    if metrics.get("net_income_label") is not None:
+        lines.append(
+            f"- Net Income: {metrics.get('net_income_label')} ({metrics.get('net_income_raw', 0):,.0f} USD) [Tag: {metrics.get('net_income_tag', 'N/A')}]"
+        )
+    if metrics.get("rd_expense_label") is not None:
+        lines.append(
+            f"- R&D Expense: {metrics.get('rd_expense_label')} ({metrics.get('rd_expense_raw', 0):,.0f} USD) [Tag: {metrics.get('rd_expense_tag', 'N/A')}]"
+        )
+    if metrics.get("cash_and_equiv_label") is not None:
+        lines.append(
+            f"- Cash & Cash Equivalents: {metrics.get('cash_and_equiv_label')} ({metrics.get('cash_and_equiv_raw', 0):,.0f} USD) [Tag: {metrics.get('cash_and_equiv_tag', 'N/A')}]"
+        )
+    if metrics.get("capex_label") is not None:
+        lines.append(
+            f"- Capital Expenditures: {metrics.get('capex_label')} ({metrics.get('capex_raw', 0):,.0f} USD) [Tag: {metrics.get('capex_tag', 'N/A')}]"
+        )
 
     # Prior Period
     prior_end = metrics.get("prior_period_end_date")
@@ -207,6 +251,26 @@ def format_verified_facts(metrics: dict[str, Any]) -> str:
         if metrics.get("prior_margin_label") is not None:
             lines.append(
                 f"- Prior Gross Margin: {metrics.get('prior_margin_label')}"
+            )
+        if metrics.get("prior_operating_income_label") is not None:
+            lines.append(
+                f"- Prior Operating Income: {metrics.get('prior_operating_income_label')} ({metrics.get('prior_operating_income_raw', 0):,.0f} USD) [Tag: {metrics.get('operating_income_tag', 'N/A')}]"
+            )
+        if metrics.get("prior_net_income_label") is not None:
+            lines.append(
+                f"- Prior Net Income: {metrics.get('prior_net_income_label')} ({metrics.get('prior_net_income_raw', 0):,.0f} USD) [Tag: {metrics.get('net_income_tag', 'N/A')}]"
+            )
+        if metrics.get("prior_rd_expense_label") is not None:
+            lines.append(
+                f"- Prior R&D Expense: {metrics.get('prior_rd_expense_label')} ({metrics.get('prior_rd_expense_raw', 0):,.0f} USD) [Tag: {metrics.get('rd_expense_tag', 'N/A')}]"
+            )
+        if metrics.get("prior_cash_and_equiv_label") is not None:
+            lines.append(
+                f"- Prior Cash & Cash Equivalents: {metrics.get('prior_cash_and_equiv_label')} ({metrics.get('prior_cash_and_equiv_raw', 0):,.0f} USD) [Tag: {metrics.get('cash_and_equiv_tag', 'N/A')}]"
+            )
+        if metrics.get("prior_capex_label") is not None:
+            lines.append(
+                f"- Prior Capital Expenditures: {metrics.get('prior_capex_label')} ({metrics.get('prior_capex_raw', 0):,.0f} USD) [Tag: {metrics.get('capex_tag', 'N/A')}]"
             )
 
     lines.append("=== END VERIFIED FACTS ===")
@@ -364,6 +428,31 @@ class XBRLParser:
         prior_gp_in_billions = round(prior_gp_val / 1e9, 2) if prior_gp_val is not None else None
         prior_cost_in_billions = round(prior_cost_val / 1e9, 2) if prior_cost_val is not None else None
 
+        # 3. Operating Income, Net Income, R&D Expense, Cash & Equivalents, Capex
+        opinc_tag, annual_opinc = self._find_best_annual_facts(us_gaap, OPERATING_INCOME_TAGS)
+        ni_tag, annual_ni = self._find_best_annual_facts(us_gaap, NET_INCOME_TAGS)
+        rd_tag, annual_rd = self._find_best_annual_facts(us_gaap, RD_EXPENSE_TAGS)
+        cash_tag, annual_cash = self._find_best_annual_facts(us_gaap, CASH_AND_EQUIV_TAGS)
+        capex_tag, annual_capex = self._find_best_annual_facts(us_gaap, CAPEX_TAGS)
+
+        def _get_metric_val_accn(annual_map, end_date):
+            if annual_map and end_date in annual_map:
+                entry = annual_map[end_date]
+                return float(entry["val"]), str(entry.get("accn") or accn)
+            return None, None
+
+        cur_opinc_val, cur_opinc_accn = _get_metric_val_accn(annual_opinc, cur_end)
+        cur_ni_val, cur_ni_accn = _get_metric_val_accn(annual_ni, cur_end)
+        cur_rd_val, cur_rd_accn = _get_metric_val_accn(annual_rd, cur_end)
+        cur_cash_val, cur_cash_accn = _get_metric_val_accn(annual_cash, cur_end)
+        cur_capex_val, cur_capex_accn = _get_metric_val_accn(annual_capex, cur_end)
+
+        prior_opinc_val, prior_opinc_accn = _get_metric_val_accn(annual_opinc, prior_end) if prior_end else (None, None)
+        prior_ni_val, prior_ni_accn = _get_metric_val_accn(annual_ni, prior_end) if prior_end else (None, None)
+        prior_rd_val, prior_rd_accn = _get_metric_val_accn(annual_rd, prior_end) if prior_end else (None, None)
+        prior_cash_val, prior_cash_accn = _get_metric_val_accn(annual_cash, prior_end) if prior_end else (None, None)
+        prior_capex_val, prior_capex_accn = _get_metric_val_accn(annual_capex, prior_end) if prior_end else (None, None)
+
         return {
             "ticker": clean_ticker,
             "company_name": entity_name,
@@ -399,6 +488,31 @@ class XBRLParser:
             "growth_source": "SEC filing",
             "growth_period": growth_period,
             "growth_accession": accn,
+            "operating_income": round(cur_opinc_val / 1e9, 2) if cur_opinc_val is not None else None,
+            "operating_income_raw": cur_opinc_val,
+            "operating_income_label": f"${round(cur_opinc_val / 1e9, 2)}B" if cur_opinc_val is not None else None,
+            "operating_income_tag": opinc_tag,
+            "operating_income_accession": cur_opinc_accn,
+            "net_income": round(cur_ni_val / 1e9, 2) if cur_ni_val is not None else None,
+            "net_income_raw": cur_ni_val,
+            "net_income_label": f"${round(cur_ni_val / 1e9, 2)}B" if cur_ni_val is not None else None,
+            "net_income_tag": ni_tag,
+            "net_income_accession": cur_ni_accn,
+            "rd_expense": round(cur_rd_val / 1e9, 2) if cur_rd_val is not None else None,
+            "rd_expense_raw": cur_rd_val,
+            "rd_expense_label": f"${round(cur_rd_val / 1e9, 2)}B" if cur_rd_val is not None else None,
+            "rd_expense_tag": rd_tag,
+            "rd_expense_accession": cur_rd_accn,
+            "cash_and_equiv": round(cur_cash_val / 1e9, 2) if cur_cash_val is not None else None,
+            "cash_and_equiv_raw": cur_cash_val,
+            "cash_and_equiv_label": f"${round(cur_cash_val / 1e9, 2)}B" if cur_cash_val is not None else None,
+            "cash_and_equiv_tag": cash_tag,
+            "cash_and_equiv_accession": cur_cash_accn,
+            "capex": round(cur_capex_val / 1e9, 2) if cur_capex_val is not None else None,
+            "capex_raw": cur_capex_val,
+            "capex_label": f"${round(cur_capex_val / 1e9, 2)}B" if cur_capex_val is not None else None,
+            "capex_tag": capex_tag,
+            "capex_accession": cur_capex_accn,
             "prior_fiscal_year": prior_fy,
             "prior_period_end_date": prior_end,
             "prior_accession_number": prior_accn,
@@ -413,6 +527,21 @@ class XBRLParser:
             "prior_cost_label": f"${prior_cost_in_billions}B" if prior_cost_in_billions is not None else None,
             "prior_gross_margin": prior_gross_margin,
             "prior_margin_label": f"{prior_gross_margin}%" if prior_gross_margin is not None else None,
+            "prior_operating_income": round(prior_opinc_val / 1e9, 2) if prior_opinc_val is not None else None,
+            "prior_operating_income_raw": prior_opinc_val,
+            "prior_operating_income_label": f"${round(prior_opinc_val / 1e9, 2)}B" if prior_opinc_val is not None else None,
+            "prior_net_income": round(prior_ni_val / 1e9, 2) if prior_ni_val is not None else None,
+            "prior_net_income_raw": prior_ni_val,
+            "prior_net_income_label": f"${round(prior_ni_val / 1e9, 2)}B" if prior_ni_val is not None else None,
+            "prior_rd_expense": round(prior_rd_val / 1e9, 2) if prior_rd_val is not None else None,
+            "prior_rd_expense_raw": prior_rd_val,
+            "prior_rd_expense_label": f"${round(prior_rd_val / 1e9, 2)}B" if prior_rd_val is not None else None,
+            "prior_cash_and_equiv": round(prior_cash_val / 1e9, 2) if prior_cash_val is not None else None,
+            "prior_cash_and_equiv_raw": prior_cash_val,
+            "prior_cash_and_equiv_label": f"${round(prior_cash_val / 1e9, 2)}B" if prior_cash_val is not None else None,
+            "prior_capex": round(prior_capex_val / 1e9, 2) if prior_capex_val is not None else None,
+            "prior_capex_raw": prior_capex_val,
+            "prior_capex_label": f"${round(prior_capex_val / 1e9, 2)}B" if prior_capex_val is not None else None,
             "primary_driver": None,
             "driver_source": None,
             "driver_period": None,

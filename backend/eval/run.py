@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 
+import hashlib
+
 # Ensure backend directory is in path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
@@ -20,12 +22,17 @@ from app.schemas.analysis import SourceEvidenceNode
 from app.services.analysis_service import analysis_service
 from app.services.deterministic_lookup import deterministic_lookup_service
 from app.services.number_validator import number_validator
+from app.services.rag_engine import QA_PROMPT_TEMPLATE, rag_engine_service
 from app.services.retrieval_service import retrieval_service
+from app.services.metrics_service import metrics_service
+from app.services.sec_service import format_verified_facts
 from eval.cache import eval_cache
+from eval.funnel_diagnosis import find_gold_chunks_for_item, load_corpus_data
 from eval.judge import faithfulness_judge
 from eval.metrics import (
     check_numeric_match,
     compute_aggregate_metrics,
+    evaluate_chunk_retrieval_hit,
     evaluate_citation_precision,
     evaluate_retrieval_hit,
 )
@@ -88,6 +95,11 @@ def run_evaluation(
 
     records: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
+    cache_hits: int = 0
+    cache_misses: int = 0
+    regenerated_items: list[str] = []
+
+    corpus_ids, corpus_docs, corpus_metas = load_corpus_data()
 
     # Reset boost counter
     retrieval_service.total_boost_changed_top5_count = 0
@@ -115,6 +127,7 @@ def run_evaluation(
         is_refusal = False
         path = "rag"
         res = None
+        is_cache_hit = False
 
         if retrieval_only:
             # -----------------------------------------------------------
@@ -135,13 +148,13 @@ def run_evaluation(
                         print(f"  -> Deterministic lookup answered ({path}): {report[:60]}...")
                     else:
                         path = "rag"
-                        sources = retrieval_service.retrieve_single(ticker, question, top_n=5)
+                        sources = retrieval_service.retrieve_single(ticker, question, top_n=10)
                 else:
                     path = "rag"
-                    sources = retrieval_service.retrieve_single(ticker, question, top_n=5)
+                    sources = retrieval_service.retrieve_single(ticker, question, top_n=10)
             elif category == "qualitative":
                 path = "rag"
-                sources = retrieval_service.retrieve_single(ticker, question, top_n=5)
+                sources = retrieval_service.retrieve_single(ticker, question, top_n=10)
             elif category == "unanswerable":
                 if getattr(settings, "DETERMINISTIC_LOOKUP_ENABLED", True):
                     det_report, det_sources, det_refusal = deterministic_lookup_service.check_deterministic_lookup(ticker, question)
@@ -153,81 +166,113 @@ def run_evaluation(
                         print("  -> Deterministic lookup refused with exact text.")
                     else:
                         path = "rag"
-                        sources = retrieval_service.retrieve_single(ticker, question, top_n=5)
+                        sources = retrieval_service.retrieve_single(ticker, question, top_n=10)
                 else:
                     path = "rag"
-                    sources = retrieval_service.retrieve_single(ticker, question, top_n=5)
+                    sources = retrieval_service.retrieve_single(ticker, question, top_n=10)
             latency_sec = round(time.perf_counter() - t0, 3)
 
         else:
             # -----------------------------------------------------------
             # FULL END-TO-END GENERATION MODE
             # -----------------------------------------------------------
-            cache_key = eval_cache.compute_key(
-                ticker=ticker,
-                prompt=question,
-                model_name=settings.GROQ_MODEL,
-                task="analysis_query",
-            )
-            cached_entry = eval_cache.get(cache_key) if not no_cache else None
+            # 1. Deterministic check first
+            if getattr(settings, "DETERMINISTIC_LOOKUP_ENABLED", True):
+                if category == "numeric":
+                    det_rep, det_srcs, _ = deterministic_lookup_service.check_deterministic_lookup(ticker, question)
+                    if det_rep is not None:
+                        report = det_rep
+                        sources = det_srcs
+                        path = "deterministic"
+                        print(f"  -> Deterministic lookup answered ({path})")
+                elif category == "unanswerable":
+                    det_rep, det_srcs, det_refusal = deterministic_lookup_service.check_deterministic_lookup(ticker, question)
+                    if det_rep is not None and det_refusal:
+                        report = det_rep
+                        sources = det_srcs
+                        path = "deterministic"
+                        is_refusal = True
+                        print("  -> Deterministic lookup refused with exact text.")
 
-            if cached_entry:
-                print("  -> Loaded from on-disk cache [CACHED]")
-                report = cached_entry.get("report", "")
-                raw_sources = cached_entry.get("sources", [])
-                sources = [SourceEvidenceNode(**s) for s in raw_sources]
-                latency_sec = cached_entry.get("latency_sec", 0.05)
-                is_404 = cached_entry.get("is_404", False)
-                path = cached_entry.get("path", "rag")
-            else:
-                try:
-                    if is_uncovered_ticker:
-                        try:
-                            res = analysis_service.analyze_single_stock(ticker, custom_prompt=question)
-                            report = res.report
-                            sources = res.sources
-                            path = getattr(res, "path", "rag")
-                        except Exception as e:
-                            if "404" in str(e) or "No documents ingested" in str(e):
-                                print("  -> Ticker not ingested: API correctly returned 404")
-                                report = "404: No documents ingested for ticker"
-                                is_404 = True
-                                sources = []
-                                path = "none"
-                            else:
-                                raise
-                    else:
-                        res = analysis_service.analyze_single_stock(ticker, custom_prompt=question)
-                        report = res.report
-                        sources = res.sources
-                        path = getattr(res, "path", "rag")
+            # 2. If uncovered ticker and not handled
+            if not report and is_uncovered_ticker:
+                is_404 = True
+                report = "404: No documents ingested for ticker"
+                sources = []
+                path = "none"
 
-                    latency_sec = round(time.perf_counter() - t0, 3)
+            # 3. If still no report, evaluate RAG with prompt-hash cache
+            if not report and not is_404:
+                sources = retrieval_service.retrieve_single(ticker, question, top_n=10)
+                sec_metrics = metrics_service.get_metrics(ticker) or {}
+                facts_block = format_verified_facts(sec_metrics)
+                passages = [analysis_service._format_source_passage(i + 1, s) for i, s in enumerate(sources[:5])]
+                context_str = f"{facts_block}\n\n=== RETRIEVED SOURCES ===\n" + "\n\n".join(passages)
+                full_prompt = QA_PROMPT_TEMPLATE.format(context_str=context_str, query_str=question)
 
-                    # Persist to disk cache
-                    eval_cache.set(
-                        cache_key,
-                        {
-                            "id": q_id,
-                            "ticker": ticker,
-                            "question": question,
-                            "report": report,
-                            "sources": [s.model_dump() for s in sources],
-                            "latency_sec": latency_sec,
-                            "is_404": is_404,
-                            "path": path,
-                        },
-                    )
-                    time.sleep(delay_sec)
+                prompt_hash = hashlib.sha256(full_prompt.encode("utf-8")).hexdigest()
+                gen_key = eval_cache.compute_generator_key(ticker, prompt_hash, settings.GROQ_MODEL, settings.TEMPERATURE)
+                legacy_key = eval_cache.compute_key(ticker, question, settings.GROQ_MODEL, "analysis_query")
 
-                except Exception as e:
-                    err_str = str(e)
-                    print(f"  [ERROR] Execution failed for {q_id}: {e}")
-                    if "daily" in err_str.lower() or "limit reached" in err_str.lower():
-                        logger.error(f"Daily Groq quota reached at item {idx}. Halting cleanly.")
-                        break
-                    report = f"Execution Error: {e}"
-                    latency_sec = round(time.perf_counter() - t0, 3)
+                cached_entry = None
+                if not no_cache:
+                    cached_entry = eval_cache.get(gen_key) or eval_cache.get(legacy_key)
+
+                if cached_entry:
+                    print("  -> Loaded from on-disk cache [CACHED]")
+                    report = cached_entry.get("report", "")
+                    raw_sources = cached_entry.get("sources", [])
+                    if raw_sources:
+                        sources = [SourceEvidenceNode(**s) for s in raw_sources]
+                    latency_sec = cached_entry.get("latency_sec", 0.05)
+                    is_404 = cached_entry.get("is_404", False)
+                    path = cached_entry.get("path", "rag")
+                    cache_hits += 1
+                    is_cache_hit = True
+                else:
+                    cache_misses += 1
+                    regenerated_items.append(q_id)
+                    print(f"  -> Cache miss. Generating via Groq ({settings.GROQ_MODEL})...")
+                    try:
+                        report = rag_engine_service.generate_completion(full_prompt)
+                        latency_sec = round(time.perf_counter() - t0, 3)
+                        eval_cache.set(
+                            gen_key,
+                            {
+                                "id": q_id,
+                                "ticker": ticker,
+                                "question": question,
+                                "report": report,
+                                "sources": [s.model_dump() for s in sources[:5]],
+                                "latency_sec": latency_sec,
+                                "is_404": is_404,
+                                "path": path,
+                            },
+                        )
+                        eval_cache.set(
+                            legacy_key,
+                            {
+                                "id": q_id,
+                                "ticker": ticker,
+                                "question": question,
+                                "report": report,
+                                "sources": [s.model_dump() for s in sources[:5]],
+                                "latency_sec": latency_sec,
+                                "is_404": is_404,
+                                "path": path,
+                            },
+                        )
+                        time.sleep(delay_sec)
+                    except Exception as e:
+                        err_str = str(e)
+                        print(f"  [ERROR] Execution failed for {q_id}: {e}")
+                        if "daily" in err_str.lower() or "limit reached" in err_str.lower():
+                            logger.error(f"Daily Groq quota reached at item {idx}. Halting cleanly.")
+                            break
+                        report = f"Execution Error: {e}"
+                        latency_sec = round(time.perf_counter() - t0, 3)
+
+            latency_sec = round(time.perf_counter() - t0, 3)
 
         # Refusal check
         clean_rep = report.strip()
@@ -292,13 +337,25 @@ def run_evaluation(
         elif category == "qualitative":
             key_phrases = item.get("key_phrases", [])
             target_item = item.get("target_item")
+            gold_chunk_ids = find_gold_chunks_for_item(item, corpus_ids, corpus_docs, corpus_metas)
 
-            # Condition 4: evaluate both normalized and raw
-            hit_a_norm, hit_b, rank_a_norm, rank_b = evaluate_retrieval_hit(
+            # Chunk-based hit
+            chunk_hit_5, chunk_rank_5 = evaluate_chunk_retrieval_hit(sources, gold_chunk_ids, top_k=5)
+            chunk_hit_10, chunk_rank_10 = evaluate_chunk_retrieval_hit(sources, gold_chunk_ids, top_k=10)
+
+            # Condition 4: evaluate both normalized and raw at top 5 and top 10
+            hit_a_norm_5, hit_b_5, rank_a_norm_5, rank_b_5 = evaluate_retrieval_hit(
                 sources=sources,
                 key_phrases=key_phrases,
                 target_item=target_item,
                 top_k=5,
+                normalize=True,
+            )
+            hit_a_norm_10, hit_b_10, rank_a_norm_10, _ = evaluate_retrieval_hit(
+                sources=sources,
+                key_phrases=key_phrases,
+                target_item=target_item,
+                top_k=10,
                 normalize=True,
             )
             hit_a_raw, _, rank_a_raw, _ = evaluate_retrieval_hit(
@@ -309,17 +366,25 @@ def run_evaluation(
                 normalize=False,
             )
 
-            record["hit_a"] = hit_a_norm
-            record["hit_a_norm"] = hit_a_norm
-            record["rank_a_norm"] = rank_a_norm
+            record["chunk_hit"] = chunk_hit_5
+            record["chunk_hit_at_5"] = chunk_hit_5
+            record["chunk_hit_at_10"] = chunk_hit_10
+            record["chunk_rank"] = chunk_rank_5 or chunk_rank_10
+
+            record["hit_a"] = hit_a_norm_5
+            record["hit_a_norm"] = hit_a_norm_5
+            record["hit_a_norm_5"] = hit_a_norm_5
+            record["hit_a_norm_10"] = hit_a_norm_10
+            record["rank_a_norm"] = rank_a_norm_5 or rank_a_norm_10
             record["hit_a_raw"] = hit_a_raw
             record["rank_a_raw"] = rank_a_raw
-            record["hit_b"] = hit_b
-            record["rank_b"] = rank_b
+            record["hit_b"] = hit_b_5
+            record["rank_b"] = rank_b_5
             record["target_item"] = target_item
             record["key_phrases"] = key_phrases
+            record["gold_chunk_ids"] = gold_chunk_ids
 
-            if not hit_a_norm:
+            if not hit_a_norm_5:
                 failures.append({
                     "id": q_id,
                     "category": category,
@@ -384,6 +449,12 @@ def run_evaluation(
     metrics["retrieval"]["boost_changed_top5_count"] = getattr(
         retrieval_service, "total_boost_changed_top5_count", 0
     )
+    metrics["cache_stats"] = {
+        "hits": cache_hits,
+        "misses": cache_misses,
+        "regenerated_count": len(regenerated_items),
+        "regenerated_items": regenerated_items,
+    }
 
     results_data = {
         "metadata": {

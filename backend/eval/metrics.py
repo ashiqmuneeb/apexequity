@@ -114,6 +114,23 @@ def evaluate_retrieval_hit(
     return hit_a, hit_b, rank_a, rank_b
 
 
+def evaluate_chunk_retrieval_hit(
+    sources: list[SourceEvidenceNode],
+    gold_chunk_ids: list[str],
+    top_k: int = 5,
+) -> tuple[bool, int | None]:
+    """Computes chunk-based retrieval hit status:
+
+    Returns: (hit, rank) where hit is True if any top_k source node's chunk ID is in gold_chunk_ids.
+    """
+    top_sources = sources[:top_k]
+    for idx, src in enumerate(top_sources, 1):
+        cid = src.metadata.get("id")
+        if cid and cid in gold_chunk_ids:
+            return True, idx
+    return False, None
+
+
 def evaluate_citation_precision(
     report: str,
     sources: list[SourceEvidenceNode],
@@ -186,9 +203,22 @@ def compute_aggregate_metrics(eval_records: list[dict[str, Any]]) -> dict[str, A
     unans_records = [r for r in eval_records if r["category"] == "unanswerable"]
 
     # 1. Retrieval Recall@5 & MRR (both raw and normalized per Condition 4)
+    # Chunk-based retrieval (Condition 3 of Phase 4c)
+    hits_chunk_5 = sum(1 for r in qual_records if r.get("chunk_hit_at_5", r.get("chunk_hit", False)))
+    recall_chunk_5 = hits_chunk_5 / len(qual_records) if qual_records else 1.0
+    hits_chunk_10 = sum(1 for r in qual_records if r.get("chunk_hit_at_10", r.get("chunk_hit", False)))
+    recall_chunk_10 = hits_chunk_10 / len(qual_records) if qual_records else 1.0
+    mrr_chunk = (
+        np.mean([1.0 / r["chunk_rank"] if r.get("chunk_rank") else 0.0 for r in qual_records])
+        if qual_records
+        else 1.0
+    )
+
     # Normalized (Condition 4 bug fix)
-    hits_a_norm = sum(1 for r in qual_records if r.get("hit_a_norm", r.get("hit_a", False)))
-    recall_a_norm = hits_a_norm / len(qual_records) if qual_records else 1.0
+    hits_a_norm_5 = sum(1 for r in qual_records if r.get("hit_a_norm_5", r.get("hit_a_norm", r.get("hit_a", False))))
+    recall_a_norm_5 = hits_a_norm_5 / len(qual_records) if qual_records else 1.0
+    hits_a_norm_10 = sum(1 for r in qual_records if r.get("hit_a_norm_10", r.get("hit_a_norm", r.get("hit_a", False))))
+    recall_a_norm_10 = hits_a_norm_10 / len(qual_records) if qual_records else 1.0
     mrr_a_norm = np.mean([1.0 / r["rank_a_norm"] if r.get("rank_a_norm") else (1.0 / r["rank_a"] if r.get("rank_a") else 0.0) for r in qual_records]) if qual_records else 1.0
 
     # Raw unnormalized
@@ -264,7 +294,11 @@ def compute_aggregate_metrics(eval_records: list[dict[str, Any]]) -> dict[str, A
     return {
         "dataset_size": total_items,
         "retrieval": {
-            "recall_at_5_key_phrases": round(recall_a_norm, 4),
+            "chunk_recall_at_5": round(recall_chunk_5, 4),
+            "chunk_recall_at_10": round(recall_chunk_10, 4),
+            "chunk_mrr": round(float(mrr_chunk), 4),
+            "recall_at_5_key_phrases": round(recall_a_norm_5, 4),
+            "recall_at_10_key_phrases": round(recall_a_norm_10, 4),
             "mrr_key_phrases": round(float(mrr_a_norm), 4),
             "recall_at_5_raw": round(recall_a_raw, 4),
             "mrr_raw": round(float(mrr_a_raw), 4),

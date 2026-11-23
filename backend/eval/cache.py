@@ -27,6 +27,20 @@ class EvalCache:
         raw = f"{task}:{ticker.strip().upper()}:{prompt.strip()}:{model_name.strip()}"
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
+    @staticmethod
+    def compute_generator_key(
+        ticker: str,
+        prompt_hash: str,
+        model_name: str,
+        temperature: float = 0.1,
+    ) -> str:
+        """Condition 6: Cache key incorporating SHA256 hash of final prompt (retrieved context
+
+        plus verified facts), model name, and temperature.
+        """
+        raw = f"generator:{ticker.strip().upper()}:{prompt_hash}:{model_name.strip()}:{temperature}"
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
     def get(self, key: str) -> dict[str, Any] | None:
         """Loads cached evaluation record if present on disk."""
         target_file = self.cache_dir / f"{key}.json"
@@ -54,4 +68,3 @@ class EvalCache:
 
 
 eval_cache = EvalCache()
-

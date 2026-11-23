@@ -416,7 +416,9 @@ class RetrievalService:
         # Convert to SourceEvidenceNode schema
         sources: list[SourceEvidenceNode] = []
         for rank_idx, c in enumerate(final_candidates, 1):
-            meta = c.get("metadata", {})
+            meta = dict(c.get("metadata", {}))
+            if c.get("id"):
+                meta["id"] = c.get("id")
             full_text = c.get("text", "")
             # Extract highest-scoring 1-2 sentence passage (<= 300 chars) matching query
             quote = extract_best_matching_quote(full_text, query, max_chars=300)
@@ -437,7 +439,7 @@ class RetrievalService:
                     retrieval_score=r_score,
                     rerank_score=rr_score,
                     score=rr_score if rr_score is not None else r_score,
-                    text=quote,
+                    text=full_text,
                     metadata=meta,
                 )
             )

@@ -1,0 +1,612 @@
+{
+  "NVDA": [
+    {
+      "ticker": "NVDA",
+      "tag": "AccruedIncomeTaxesNoncurrent",
+      "label": "Accrued Income Taxes, Noncurrent",
+      "val": 3958000000.0,
+      "val_millions": 3958,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AccruedLiabilitiesCurrent",
+      "label": "Accrued Liabilities, Current",
+      "val": 21352000000.0,
+      "val_millions": 21352,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
+      "label": "Accumulated Depreciation, Depletion and Amortization, Property, Plant, and Equipment",
+      "val": 6587000000.0,
+      "val_millions": 6587,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+      "label": "Accumulated Other Comprehensive Income (Loss), Net of Tax",
+      "val": 178000000.0,
+      "val_millions": 178,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AdditionalPaidInCapital",
+      "label": "Additional Paid in Capital",
+      "val": 10118000000.0,
+      "val_millions": 10118,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AdjustmentsRelatedToTaxWithholdingForShareBasedCompensation",
+      "label": "Share-based Payment Arrangement, Decrease for Tax Withholding Obligation",
+      "val": 7948000000.0,
+      "val_millions": 7948,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue",
+      "label": "APIC, Share-based Payment Arrangement, Increase for Cost Recognition",
+      "val": 6387000000.0,
+      "val_millions": 6387,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AllocatedShareBasedCompensationExpense",
+      "label": "Share-based Payment Arrangement, Expense",
+      "val": 6386000000.0,
+      "val_millions": 6386,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AmortizationOfIntangibleAssets",
+      "label": "Amortization of Intangible Assets",
+      "val": 488000000.0,
+      "val_millions": 488,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "Assets",
+      "label": "Assets",
+      "val": 206803000000.0,
+      "val_millions": 206803,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AssetsCurrent",
+      "label": "Assets, Current",
+      "val": 125605000000.0,
+      "val_millions": 125605,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    },
+    {
+      "ticker": "NVDA",
+      "tag": "AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedGainBeforeTax",
+      "label": "Debt Securities, Available-for-sale, Accumulated Gross Unrealized Gain, before Tax",
+      "val": 174000000.0,
+      "val_millions": 174,
+      "end_date": "2026-01-25",
+      "fy": "2026",
+      "accn": "0001045810-26-000021"
+    }
+  ],
+  "MSFT": [
+    {
+      "ticker": "MSFT",
+      "tag": "AccountsReceivableNetNoncurrent",
+      "label": "Accounts Receivable, after Allowance for Credit Loss, Noncurrent",
+      "val": 5500000000.0,
+      "val_millions": 5500,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AccruedIncomeTaxesCurrent",
+      "label": "Accrued Income Taxes, Current",
+      "val": 2534000000.0,
+      "val_millions": 2534,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AccruedIncomeTaxesNoncurrent",
+      "label": "Accrued Income Taxes, Noncurrent",
+      "val": 28647000000.0,
+      "val_millions": 28647,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
+      "label": "Accumulated Depreciation, Depletion and Amortization, Property, Plant, and Equipment",
+      "val": 118691000000.0,
+      "val_millions": 118691,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+      "label": "Accumulated Other Comprehensive Income (Loss), Net of Tax",
+      "val": -3284000000.0,
+      "val_millions": -3284,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AdvertisingExpense",
+      "label": "Advertising Expense",
+      "val": 2700000000.0,
+      "val_millions": 2700,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AllocatedShareBasedCompensationExpense",
+      "label": "Share-based Payment Arrangement, Expense",
+      "val": 12405000000.0,
+      "val_millions": 12405,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AllowanceForDoubtfulAccountsReceivableCurrent",
+      "label": "Accounts Receivable, Allowance for Credit Loss, Current",
+      "val": 1040000000.0,
+      "val_millions": 1040,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AmortizationOfIntangibleAssets",
+      "label": "Amortization of Intangible Assets",
+      "val": 4700000000.0,
+      "val_millions": 4700,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "Assets",
+      "label": "Assets",
+      "val": 758376000000.0,
+      "val_millions": 758376,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AssetsCurrent",
+      "label": "Assets, Current",
+      "val": 207710000000.0,
+      "val_millions": 207710,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    },
+    {
+      "ticker": "MSFT",
+      "tag": "AvailableForSaleDebtSecuritiesAmortizedCostBasis",
+      "label": "Debt Securities, Available-for-sale, Amortized Cost",
+      "val": 72170000000.0,
+      "val_millions": 72170,
+      "end_date": "2026-06-30",
+      "fy": "2026",
+      "accn": "0001193125-26-323660"
+    }
+  ],
+  "AAPL": [
+    {
+      "ticker": "AAPL",
+      "tag": "AccruedIncomeTaxesCurrent",
+      "label": "Accrued Income Taxes, Current",
+      "val": 5287000000.0,
+      "val_millions": 5287,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
+      "label": "Accumulated Depreciation, Depletion and Amortization, Property, Plant, and Equipment",
+      "val": 77851000000.0,
+      "val_millions": 77851,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+      "label": "Accumulated Other Comprehensive Income (Loss), Net of Tax",
+      "val": -6422000000.0,
+      "val_millions": -6422,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "AllocatedShareBasedCompensationExpense",
+      "label": "Share-based Payment Arrangement, Expense",
+      "val": 13789000000.0,
+      "val_millions": 13789,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "AmortizationOfIntangibleAssets",
+      "label": "Amortization of Intangible Assets",
+      "val": 4900000000.0,
+      "val_millions": 4900,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "Assets",
+      "label": "Assets",
+      "val": 404548000000.0,
+      "val_millions": 404548,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "AssetsCurrent",
+      "label": "Assets, Current",
+      "val": 173857000000.0,
+      "val_millions": 173857,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "AssetsNoncurrent",
+      "label": "Assets, Noncurrent",
+      "val": 230691000000.0,
+      "val_millions": 230691,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect",
+      "label": "Cash, Cash Equivalents, Restricted Cash and Restricted Cash Equivalents, Period Increase (Decrease), Including Exchange Rate Effect",
+      "val": 371000000.0,
+      "val_millions": 371,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "CommercialPaper",
+      "label": "Commercial Paper",
+      "val": 1997000000.0,
+      "val_millions": 1997,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "CommonStocksIncludingAdditionalPaidInCapital",
+      "label": "Common Stocks, Including Additional Paid in Capital",
+      "val": 104815000000.0,
+      "val_millions": 104815,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    },
+    {
+      "ticker": "AAPL",
+      "tag": "ComprehensiveIncomeNetOfTax",
+      "label": "Comprehensive Income (Loss), Net of Tax, Attributable to Parent",
+      "val": 131324000000.0,
+      "val_millions": 131324,
+      "end_date": "2026-09-26",
+      "fy": "2026",
+      "accn": "0000320193-26-000026"
+    }
+  ],
+  "GOOGL": [
+    {
+      "ticker": "GOOGL",
+      "tag": "AccruedIncomeTaxesCurrent",
+      "label": "Accrued Income Taxes, Current",
+      "val": 523000000.0,
+      "val_millions": 523,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AccruedIncomeTaxesNoncurrent",
+      "label": "Accrued Income Taxes, Noncurrent",
+      "val": 9531000000.0,
+      "val_millions": 9531,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AccruedLiabilitiesCurrent",
+      "label": "Accrued Liabilities, Current",
+      "val": 55557000000.0,
+      "val_millions": 55557,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+      "label": "Accumulated Other Comprehensive Income (Loss), Net of Tax",
+      "val": -1916000000.0,
+      "val_millions": -1916,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue",
+      "label": "APIC, Share-based Payment Arrangement, Increase for Cost Recognition",
+      "val": 25130000000.0,
+      "val_millions": 25130,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AllocatedShareBasedCompensationExpense",
+      "label": "Share-based Payment Arrangement, Expense",
+      "val": 27100000000.0,
+      "val_millions": 27100,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AllowanceForDoubtfulAccountsReceivable",
+      "label": "Accounts Receivable, Allowance for Credit Loss",
+      "val": 924000000.0,
+      "val_millions": 924,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "Assets",
+      "label": "Assets",
+      "val": 595281000000.0,
+      "val_millions": 595281,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AssetsCurrent",
+      "label": "Assets, Current",
+      "val": 206038000000.0,
+      "val_millions": 206038,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AvailableForSaleSecuritiesDebtMaturitiesAfterFiveThroughTenYearsFairValue",
+      "label": "Debt Securities, Available-for-Sale, Fair Value, Maturity, Allocated and Single Maturity Date, after Year 5 Through 10",
+      "val": 12769000000.0,
+      "val_millions": 12769,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AvailableForSaleSecuritiesDebtMaturitiesAfterOneThroughFiveYearsFairValue",
+      "label": "Debt Securities, Available-for-Sale, Fair Value, Maturity, Allocated and Single Maturity Date, after Year One Through Five",
+      "val": 37001000000.0,
+      "val_millions": 37001,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    },
+    {
+      "ticker": "GOOGL",
+      "tag": "AvailableForSaleSecuritiesDebtMaturitiesAfterTenYearsFairValue",
+      "label": "Debt Securities, Available-for-Sale, Fair Value, Maturity, Allocated and Single Maturity Date, after Year 10",
+      "val": 13317000000.0,
+      "val_millions": 13317,
+      "end_date": "2025-12-31",
+      "fy": "2025",
+      "accn": "0001652044-26-000018"
+    }
+  ],
+  "AMD": [
+    {
+      "ticker": "AMD",
+      "tag": "AccruedLiabilitiesCurrent",
+      "label": "Accrued Liabilities, Current",
+      "val": 5250000000.0,
+      "val_millions": 5250,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
+      "label": "Accumulated Depreciation, Depletion and Amortization, Property, Plant, and Equipment",
+      "val": 2616000000.0,
+      "val_millions": 2616,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+      "label": "Accumulated Other Comprehensive Income (Loss), Net of Tax",
+      "val": -3000000.0,
+      "val_millions": -3,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "AdditionalPaidInCapitalCommonStock",
+      "label": "Additional Paid in Capital, Common Stock",
+      "val": 63365000000.0,
+      "val_millions": 63365,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "AdjustmentForAmortization",
+      "label": "Amortization",
+      "val": 2254000000.0,
+      "val_millions": 2254,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "AllocatedShareBasedCompensationExpense",
+      "label": "Share-based Payment Arrangement, Expense",
+      "val": 1638000000.0,
+      "val_millions": 1638,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "AllocatedShareBasedCompensationExpenseNetOfTax",
+      "label": "Share-based Payment Arrangement, Expense, after Tax",
+      "val": 1345000000.0,
+      "val_millions": 1345,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "AmortizationOfIntangibleAssets",
+      "label": "Amortization of Intangible Assets",
+      "val": 2300000000.0,
+      "val_millions": 2300,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "Assets",
+      "label": "Assets",
+      "val": 76926000000.0,
+      "val_millions": 76926,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "AssetsCurrent",
+      "label": "Assets, Current",
+      "val": 26947000000.0,
+      "val_millions": 26947,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "BusinessCombinationAcquisitionRelatedCosts",
+      "label": "Business Combination, Acquisition Related Costs",
+      "val": 47000000.0,
+      "val_millions": 47,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    },
+    {
+      "ticker": "AMD",
+      "tag": "CapitalExpendituresIncurredButNotYetPaid",
+      "label": "Capital Expenditures Incurred but Not yet Paid",
+      "val": 129000000.0,
+      "val_millions": 129,
+      "end_date": "2025-12-27",
+      "fy": "2025",
+      "accn": "0000002488-26-000018"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import subprocess
-import sys
 from pathlib import Path
+
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -18,8 +18,8 @@ def check_tracked():
         if not lines:
             print("  Clean (no untracked or modified files)")
         else:
-            for l in lines:
-                print(f"  {l}")
+            for line_item in lines:
+                print(f"  {line_item}")
 
     # 2. Check key runtime files
     runtime_files = [

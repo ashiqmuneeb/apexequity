@@ -1,6 +1,8 @@
+# ruff: noqa: E402
 import json
 import sys
 from pathlib import Path
+
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
@@ -8,6 +10,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 from app.core.config import settings
 from eval.metrics import compute_aggregate_metrics
 from eval.run import run_evaluation
+
 
 EVAL_DIR = BACKEND_DIR / "eval"
 GOLDEN_V1 = EVAL_DIR / "golden.jsonl"
@@ -58,7 +61,6 @@ def run_table_a_retrieval():
 
         r_metrics = res["metrics"]["retrieval"]
         lat = res["metrics"].get("latency_sec", {})
-        n = r_metrics.get("qualitative_count", 18 if "v1" in str(dpath) else 10)
 
         table_a_results.append({
             "config": name,
@@ -124,9 +126,6 @@ def run_table_b_end_to_end():
         grd = m.get("grounding", {})
         lat = m.get("latency_sec", {})
         c_stats = m.get("cache_stats", {})
-
-        n_total = m.get("dataset_size", len(res["eval_records"]))
-        n_num = len([r for r in res["eval_records"] if r["category"] == "numeric"])
 
         table_b_results.append({
             "run": name,

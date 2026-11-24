@@ -1,6 +1,7 @@
 # ruff: noqa: E402
 import argparse
 import datetime
+import hashlib
 import json
 import subprocess
 import sys
@@ -8,8 +9,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-
-import hashlib
 
 # Ensure backend directory is in path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -21,10 +20,10 @@ from app.core.logger import logger
 from app.schemas.analysis import SourceEvidenceNode
 from app.services.analysis_service import analysis_service
 from app.services.deterministic_lookup import deterministic_lookup_service
+from app.services.metrics_service import metrics_service
 from app.services.number_validator import number_validator
 from app.services.rag_engine import QA_PROMPT_TEMPLATE, rag_engine_service
 from app.services.retrieval_service import retrieval_service
-from app.services.metrics_service import metrics_service
 from app.services.sec_service import format_verified_facts
 from eval.cache import eval_cache
 from eval.funnel_diagnosis import find_gold_chunks_for_item, load_corpus_data
@@ -127,7 +126,6 @@ def run_evaluation(
         is_refusal = False
         path = "rag"
         res = None
-        is_cache_hit = False
 
         if retrieval_only:
             # -----------------------------------------------------------
@@ -216,7 +214,7 @@ def run_evaluation(
 
                 cached_entry = None
                 if not no_cache:
-                    cached_entry = eval_cache.get(gen_key) or eval_cache.get(legacy_key)
+                    cached_entry = eval_cache.get(gen_key)
 
                 if cached_entry:
                     print("  -> Loaded from on-disk cache [CACHED]")
@@ -228,7 +226,6 @@ def run_evaluation(
                     is_404 = cached_entry.get("is_404", False)
                     path = cached_entry.get("path", "rag")
                     cache_hits += 1
-                    is_cache_hit = True
                 else:
                     cache_misses += 1
                     regenerated_items.append(q_id)

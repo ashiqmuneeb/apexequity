@@ -108,7 +108,7 @@ class DeterministicLookupService:
                 display_name="operating income",
             )
 
-        if re.search(r"\b(net\s+incomes?|net\s+profits?|bottom-?line)\b", clean_q, re.IGNORECASE):
+        if re.search(r"\b(net\s+incomes?|net\s+profits?|bottom[\s-]?lines?|bottom\s+line\s+earnings)\b(?!\s*taxes?)", clean_q, re.IGNORECASE) and not re.search(r"\btaxes?\b", clean_q, re.IGNORECASE):
             return MetricIntent(
                 metric_key="net_income",
                 aggregate_type=AggregateType.AMOUNT,
@@ -151,7 +151,7 @@ class DeterministicLookupService:
             )
 
         # Revenue matches single words only when growth/margin signals are absent
-        if re.search(r"\b(revenues?|net\s+sales|sales|top-?lines?|turnover)\b", clean_q, re.IGNORECASE):
+        if re.search(r"\b(revenues?|net\s+sales|sales|top[\s-]?lines?|turnover)\b", clean_q, re.IGNORECASE):
             return MetricIntent(
                 metric_key="revenue",
                 aggregate_type=AggregateType.AMOUNT,
@@ -193,7 +193,9 @@ class DeterministicLookupService:
                 return None, [], False
 
         # Guard 3: Year presence and span validation (Condition 5b)
-        years_mentioned = [int(y) for y in re.findall(r"\b(19\d\d|20\d\d)\b", clean_q)]
+        raw_4d = [int(y) for y in re.findall(r"(?:FY\s*|\b)(19\d\d|20\d\d)\b", clean_q, re.IGNORECASE)]
+        raw_2d = [int("20" + y) for y in re.findall(r"\bFY\s*(\d{2})\b", clean_q, re.IGNORECASE)]
+        years_mentioned = sorted(set(raw_4d + raw_2d))
         if not years_mentioned:
             # Missing year -> strictly fall back to RAG path
             logger.debug("[DeterministicLookup] Missing explicit fiscal year in query -> dispatch to RAG")
@@ -271,9 +273,12 @@ class DeterministicLookupService:
             ped = metrics.get(f"{prefix}period_end_date") or metrics.get("period_end_date") or f"FY{target_fy}"
         else:
             raw_val = metrics.get(f"{prefix}{metric_key}_raw") or metrics.get(f"{prefix}{metric_key}")
-            val_label = metrics.get(f"{prefix}{metric_key}_label")
+            val_label = metrics.get(f"{prefix}{metric_key}_label") or (
+                metrics.get(f"{prefix}cost_label") if metric_key == "cost_of_revenue" else None
+            )
             tag_name = (
                 metrics.get(f"{prefix}{metric_key}_tag")
+                or (metrics.get(f"{prefix}cost_tag") if metric_key == "cost_of_revenue" else None)
                 or metrics.get(f"{metric_key}_tag")
                 or "us-gaap"
             )

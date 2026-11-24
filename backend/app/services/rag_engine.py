@@ -100,7 +100,7 @@ class RAGEngineService:
             settings.GROQ_MODEL,
             settings.GROQ_FALLBACK_MODEL,
             "openai/gpt-oss-20b",
-            "llama-3.1-8b-instant",
+            "qwen/qwen3.8-27b",
         ]
         unique_models: list[str] = []
         for m in candidate_models:
@@ -121,6 +121,7 @@ class RAGEngineService:
                         model=model_name,
                         api_key=groq_key,
                         temperature=settings.TEMPERATURE,
+                        max_retries=0,
                     )
                     resp = llm.complete(prompt)
                     self._active_model_name = model_name
@@ -130,14 +131,21 @@ class RAGEngineService:
                 except Exception as e:
                     last_error = e
                     err_str = str(e)
+                    is_daily_limit = "tokens per day" in err_str.lower() or "tpd" in err_str.lower()
+                    if is_daily_limit:
+                        logger.warning(
+                            f"Groq daily quota (TPD) reached on model '{model_name}'. Falling back immediately to next candidate model..."
+                        )
+                        break
                     is_rate_limit = "429" in err_str or "rate limit" in err_str.lower()
                     if is_rate_limit:
                         retry_after_sec = self.parse_retry_after(e)
+                        sleep_time = max(retry_after_sec + 1, 5)
                         logger.warning(
-                            f"Groq 429 Rate Limit on model '{model_name}' (attempt {attempt + 1}). Retry-After: {retry_after_sec}s."
+                            f"Groq 429 Rate Limit on model '{model_name}' (attempt {attempt + 1}). Sleeping {sleep_time}s..."
                         )
                         if attempt == 0:
-                            time.sleep(min(retry_after_sec, 3))
+                            time.sleep(min(sleep_time, 35))
                             continue
                         # If attempt 1 also rate limits, fall back to next model
                         break

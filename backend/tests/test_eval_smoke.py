@@ -177,6 +177,7 @@ def test_eval_smoke_run_offline(tmp_path):
         patch("eval.run.LATEST_JSON", tmp_path / "latest.json"),
         patch("eval.run.EVALUATION_MD", tmp_path / "EVALUATION.md"),
         patch("eval.run.analysis_service.analyze_single_stock", side_effect=mock_analyze),
+        patch("eval.run.rag_engine_service.generate_completion", return_value="Total revenue was $215.94 billion and R&D was $18.50B. Compute & Networking and Graphics [1]."),
         patch("eval.run.time.sleep", return_value=None),
     ):
         results = run_evaluation(limit=5, no_judge=True, no_cache=True, delay_sec=0.0)

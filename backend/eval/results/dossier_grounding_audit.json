@@ -1,0 +1,667 @@
+{
+  "overall_claims": 752,
+  "overall_supported": 670,
+  "overall_flagged": 82,
+  "overall_flagged_rate_pct": 10.9,
+  "range": [
+    0.0,
+    36.67
+  ],
+  "runs": [
+    {
+      "ticker": "NVDA",
+      "run": 1,
+      "total_claims": 44,
+      "supported_claims": 41,
+      "flagged_claims": 3,
+      "flagged_rate_pct": 6.82,
+      "latency_sec": 8.566,
+      "flagged_items": [
+        "+57.5\u202f%",
+        "$16.41\u202fB",
+        "$23.08\u202fB"
+      ]
+    },
+    {
+      "ticker": "NVDA",
+      "run": 2,
+      "total_claims": 32,
+      "supported_claims": 32,
+      "flagged_claims": 0,
+      "flagged_rate_pct": 0.0,
+      "latency_sec": 22.892,
+      "flagged_items": []
+    },
+    {
+      "ticker": "NVDA",
+      "run": 3,
+      "total_claims": 21,
+      "supported_claims": 21,
+      "flagged_claims": 0,
+      "flagged_rate_pct": 0.0,
+      "latency_sec": 38.179,
+      "flagged_items": []
+    },
+    {
+      "ticker": "MSFT",
+      "run": 1,
+      "total_claims": 57,
+      "supported_claims": 52,
+      "flagged_claims": 5,
+      "flagged_rate_pct": 8.77,
+      "latency_sec": 37.927,
+      "flagged_items": [
+        "$31.58\u202fB",
+        "$26.71\u202fB",
+        "$31.92\u202fB",
+        "$3.07\u202fB",
+        "$51.40\u202fB"
+      ]
+    },
+    {
+      "ticker": "MSFT",
+      "run": 2,
+      "total_claims": 53,
+      "supported_claims": 47,
+      "flagged_claims": 6,
+      "flagged_rate_pct": 11.32,
+      "latency_sec": 39.322,
+      "flagged_items": [
+        "$31.58\u202fB",
+        "$26.71\u202fB",
+        "$31.92\u202fB",
+        "$3.07\u202fB",
+        "$51.40\u202fB",
+        "64.6\u202f%"
+      ]
+    },
+    {
+      "ticker": "MSFT",
+      "run": 3,
+      "total_claims": 69,
+      "supported_claims": 68,
+      "flagged_claims": 1,
+      "flagged_rate_pct": 1.45,
+      "latency_sec": 37.976,
+      "flagged_items": [
+        "+16.3%"
+      ]
+    },
+    {
+      "ticker": "AAPL",
+      "run": 1,
+      "total_claims": 44,
+      "supported_claims": 38,
+      "flagged_claims": 6,
+      "flagged_rate_pct": 13.64,
+      "latency_sec": 4.199,
+      "flagged_items": [
+        "$38.4\u202fB",
+        "$25.01\u202fB",
+        "$20.17\u202fB",
+        "$11.22\u202fB",
+        "$3.67\u202fB",
+        "28.9\u202f%"
+      ]
+    },
+    {
+      "ticker": "AAPL",
+      "run": 2,
+      "total_claims": 47,
+      "supported_claims": 39,
+      "flagged_claims": 8,
+      "flagged_rate_pct": 17.02,
+      "latency_sec": 31.126,
+      "flagged_items": [
+        "$38.40\u202fB",
+        "$25.01\u202fB",
+        "$20.17\u202fB",
+        "$11.22\u202fB",
+        "$3.67\u202fB",
+        "$11.22\u202fB",
+        "$3.67\u202fB",
+        "28.9\u202f%"
+      ]
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "total_claims": 50,
+      "supported_claims": 40,
+      "flagged_claims": 10,
+      "flagged_rate_pct": 20.0,
+      "latency_sec": 36.278,
+      "flagged_items": [
+        "+18.9\u202fB",
+        "+25.01\u202fB",
+        "+20.17\u202fB",
+        "$11.22\u202fB",
+        "8.3\u202f%",
+        "$3.67\u202fB",
+        "3.0\u202f%",
+        "52.8\u202f%",
+        "28.9\u202f%",
+        "28.9\u202f%"
+      ]
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "total_claims": 54,
+      "supported_claims": 43,
+      "flagged_claims": 11,
+      "flagged_rate_pct": 20.37,
+      "latency_sec": 22.759,
+      "flagged_items": [
+        "$342.7\u202fB",
+        "$304.9\u202fB",
+        "12.5\u202f%",
+        "$58.7\u202fB",
+        "$43.2\u202fB",
+        "36.5\u202f%",
+        "$1.0\u202fB",
+        "$1.6\u202fB",
+        "$58.7\u202fB",
+        "$43.2\u202fB",
+        "36.5\u202f%"
+      ]
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 2,
+      "total_claims": 68,
+      "supported_claims": 61,
+      "flagged_claims": 7,
+      "flagged_rate_pct": 10.29,
+      "latency_sec": 41.159,
+      "flagged_items": [
+        "$342,721 million",
+        "$342.72B",
+        "$304,930 million",
+        "$58,705 million",
+        "$58.71B",
+        "$43,229 million",
+        "$1,648 million"
+      ]
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "total_claims": 60,
+      "supported_claims": 38,
+      "flagged_claims": 22,
+      "flagged_rate_pct": 36.67,
+      "latency_sec": 4.082,
+      "flagged_items": [
+        "$342.7",
+        "85\u202f%",
+        "$58.7",
+        "27\u202f%",
+        "$1.0",
+        "$36.6",
+        "$129.0",
+        "$112.4",
+        "$16.6",
+        "$132.2",
+        "$100.1",
+        "$61.1",
+        "$49.3",
+        "$11.8",
+        "$91.5",
+        "$52.5",
+        "$39.0",
+        "14.1\u202f%",
+        "15.0\u202f%",
+        "$43.2",
+        "$58.7",
+        "27\u202f%"
+      ]
+    },
+    {
+      "ticker": "AMD",
+      "run": 1,
+      "total_claims": 46,
+      "supported_claims": 43,
+      "flagged_claims": 3,
+      "flagged_rate_pct": 6.52,
+      "latency_sec": 35.957,
+      "flagged_items": [
+        "+141\u202f%",
+        "14\u202f%",
+        "141\u202f%"
+      ]
+    },
+    {
+      "ticker": "AMD",
+      "run": 2,
+      "total_claims": 47,
+      "supported_claims": 47,
+      "flagged_claims": 0,
+      "flagged_rate_pct": 0.0,
+      "latency_sec": 36.578,
+      "flagged_items": []
+    },
+    {
+      "ticker": "AMD",
+      "run": 3,
+      "total_claims": 60,
+      "supported_claims": 60,
+      "flagged_claims": 0,
+      "flagged_rate_pct": 0.0,
+      "latency_sec": 9.087,
+      "flagged_items": []
+    }
+  ],
+  "all_flagged_claims": [
+    {
+      "ticker": "NVDA",
+      "run": 1,
+      "claim": "+57.5\u202f%"
+    },
+    {
+      "ticker": "NVDA",
+      "run": 1,
+      "claim": "$16.41\u202fB"
+    },
+    {
+      "ticker": "NVDA",
+      "run": 1,
+      "claim": "$23.08\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 1,
+      "claim": "$31.58\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 1,
+      "claim": "$26.71\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 1,
+      "claim": "$31.92\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 1,
+      "claim": "$3.07\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 1,
+      "claim": "$51.40\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 2,
+      "claim": "$31.58\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 2,
+      "claim": "$26.71\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 2,
+      "claim": "$31.92\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 2,
+      "claim": "$3.07\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 2,
+      "claim": "$51.40\u202fB"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 2,
+      "claim": "64.6\u202f%"
+    },
+    {
+      "ticker": "MSFT",
+      "run": 3,
+      "claim": "+16.3%"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 1,
+      "claim": "$38.4\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 1,
+      "claim": "$25.01\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 1,
+      "claim": "$20.17\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 1,
+      "claim": "$11.22\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 1,
+      "claim": "$3.67\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 1,
+      "claim": "28.9\u202f%"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 2,
+      "claim": "$38.40\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 2,
+      "claim": "$25.01\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 2,
+      "claim": "$20.17\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 2,
+      "claim": "$11.22\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 2,
+      "claim": "$3.67\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 2,
+      "claim": "$11.22\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 2,
+      "claim": "$3.67\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 2,
+      "claim": "28.9\u202f%"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "+18.9\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "+25.01\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "+20.17\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "$11.22\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "8.3\u202f%"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "$3.67\u202fB"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "3.0\u202f%"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "52.8\u202f%"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "28.9\u202f%"
+    },
+    {
+      "ticker": "AAPL",
+      "run": 3,
+      "claim": "28.9\u202f%"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "$342.7\u202fB"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "$304.9\u202fB"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "12.5\u202f%"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "$58.7\u202fB"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "$43.2\u202fB"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "36.5\u202f%"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "$1.0\u202fB"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "$1.6\u202fB"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "$58.7\u202fB"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "$43.2\u202fB"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 1,
+      "claim": "36.5\u202f%"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 2,
+      "claim": "$342,721 million"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 2,
+      "claim": "$342.72B"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 2,
+      "claim": "$304,930 million"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 2,
+      "claim": "$58,705 million"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 2,
+      "claim": "$58.71B"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 2,
+      "claim": "$43,229 million"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 2,
+      "claim": "$1,648 million"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$342.7"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "85\u202f%"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$58.7"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "27\u202f%"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$1.0"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$36.6"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$129.0"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$112.4"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$16.6"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$132.2"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$100.1"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$61.1"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$49.3"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$11.8"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$91.5"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$52.5"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$39.0"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "14.1\u202f%"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "15.0\u202f%"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$43.2"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "$58.7"
+    },
+    {
+      "ticker": "GOOGL",
+      "run": 3,
+      "claim": "27\u202f%"
+    },
+    {
+      "ticker": "AMD",
+      "run": 1,
+      "claim": "+141\u202f%"
+    },
+    {
+      "ticker": "AMD",
+      "run": 1,
+      "claim": "14\u202f%"
+    },
+    {
+      "ticker": "AMD",
+      "run": 1,
+      "claim": "141\u202f%"
+    }
+  ]
+}

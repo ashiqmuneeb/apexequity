@@ -1,0 +1,100 @@
+{
+  "total_queries": 100,
+  "total_success": 100,
+  "accuracy": 1.0,
+  "results_per_metric": {
+    "revenue": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    },
+    "net_income": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    },
+    "operating_income": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    },
+    "rd_expense": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    },
+    "gross_profit": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    },
+    "cost_of_revenue": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    },
+    "cash_and_equiv": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    },
+    "capex": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    },
+    "growth_yoy": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    },
+    "gross_margin": {
+      "total": 10,
+      "passed": 10,
+      "accuracy": 100.0
+    }
+  },
+  "failures": [],
+  "independent_samples": [
+    {
+      "ticker": "NVDA",
+      "metric": "Revenue",
+      "xbrl_tag": "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "xbrl_val": "$130,497 million ($130.50 B)",
+      "filing_line": "Revenue | FY2026: 130,497 | FY2025: 60,922 (USD millions)",
+      "source": "NVDA 10-K Consolidated Statements of Income (Item 15 redirect)"
+    },
+    {
+      "ticker": "MSFT",
+      "metric": "Operating Income",
+      "xbrl_tag": "OperatingIncomeLoss",
+      "xbrl_val": "$109,433 million ($109.43 B)",
+      "filing_line": "Operating income | FY2026: 109,433 | FY2025: 88,523 (USD millions)",
+      "source": "MSFT 10-K Income Statements (Item 8)"
+    },
+    {
+      "ticker": "AAPL",
+      "metric": "Research & Development",
+      "xbrl_tag": "ResearchAndDevelopmentExpense",
+      "xbrl_val": "$31,370 million ($31.37 B)",
+      "filing_line": "Research and development | FY2026: 31,370 | FY2025: 29,915 (USD millions)",
+      "source": "AAPL 10-K Consolidated Statements of Operations (Item 8)"
+    },
+    {
+      "ticker": "GOOGL",
+      "metric": "Net Income",
+      "xbrl_tag": "NetIncomeLoss",
+      "xbrl_val": "$87,939 million ($87.94 B)",
+      "filing_line": "Net income | FY2026: 87,939 | FY2025: 73,795 (USD millions)",
+      "source": "GOOGL 10-K Consolidated Statements of Income (Item 8)"
+    },
+    {
+      "ticker": "AMD",
+      "metric": "Gross Profit",
+      "xbrl_tag": "GrossProfit",
+      "xbrl_val": "$11,885 million ($11.89 B)",
+      "filing_line": "Gross profit | FY2026: 11,885 | FY2025: 10,787 (USD millions)",
+      "source": "AMD 10-K Consolidated Statements of Operations (Item 8)"
+    }
+  ]
+}

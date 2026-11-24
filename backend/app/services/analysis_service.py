@@ -50,7 +50,8 @@ class AnalysisService:
             meta_parts.append(f"Accession: {src.accession_number}")
 
         header = f"[{idx}] Source: {src.ticker} 10-K (" + ", ".join(meta_parts) + ")"
-        return f"{header}\n{src.quote}"
+        passage_text = src.text if src.text else src.quote
+        return f"{header}\n{passage_text}"
 
     def analyze_single_stock(
         self,
@@ -136,7 +137,7 @@ class AnalysisService:
                 )
 
             # 4. Number Grounding Validation
-            source_texts = [s.quote for s in sources]
+            source_texts = [s.text or s.quote for s in sources]
             validated_report, unsupported = number_validator.validate(
                 raw_answer, facts_block, metrics, source_texts
             )
@@ -247,7 +248,7 @@ class AnalysisService:
                 unsupported = []
             else:
                 combined_facts = f"{facts_a}\n\n{facts_b}"
-                source_texts = [s.quote for s in all_sources]
+                source_texts = [s.text or s.quote for s in all_sources]
                 # Combined metrics for validator
                 merged_metrics = {}
                 for k, v in meta_a.items():
@@ -386,7 +387,7 @@ class AnalysisService:
                 )
 
             # Number validation
-            source_texts = [s.quote for s in sources]
+            source_texts = [s.text or s.quote for s in sources]
             validated_report, unsupported = number_validator.validate(
                 raw_answer, facts_block, metrics, source_texts
             )

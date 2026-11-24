@@ -42,7 +42,7 @@ class ArticleService:
             indexable.append(f)
         return indexable
 
-    CHUNKER_VERSION = "v2_filtered_40w"
+    CHUNKER_VERSION = "v3_tables_item15"
 
     def _compute_hashes(self) -> dict[str, str]:
         """Computes SHA256 hashes of indexable text files, salted with chunker version and settings

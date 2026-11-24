@@ -273,6 +273,78 @@ def format_verified_facts(metrics: dict[str, Any]) -> str:
                 f"- Prior Capital Expenditures: {metrics.get('prior_capex_label')} ({metrics.get('prior_capex_raw', 0):,.0f} USD) [Tag: {metrics.get('capex_tag', 'N/A')}]"
             )
 
+    # Derived Financial Metrics & Ratios (Code-computed with formulas)
+    has_derived = any(
+        metrics.get(k) is not None
+        for k in [
+            "gross_margin_change_label",
+            "operating_margin_label",
+            "operating_margin_change_label",
+            "net_margin_label",
+            "net_margin_change_label",
+            "opinc_growth_label",
+            "net_income_growth_label",
+            "rd_growth_label",
+            "capex_growth_label",
+            "rd_percent_of_revenue_label",
+            "capex_percent_of_revenue_label",
+            "cost_percent_of_revenue_label",
+        ]
+    )
+    if has_derived:
+        lines.extend([
+            "",
+            "Derived Financial Metrics & Ratios (Code-Computed with Formulas):",
+        ])
+        if metrics.get("gross_margin_change_label") is not None:
+            lines.append(
+                f"- Gross Margin Change: {metrics.get('gross_margin_change_label')} (Formula: {metrics.get('gross_margin_change_formula')})"
+            )
+        if metrics.get("operating_margin_label") is not None:
+            lines.append(
+                f"- Operating Margin: {metrics.get('operating_margin_label')} (Formula: {metrics.get('operating_margin_formula')})"
+            )
+        if metrics.get("operating_margin_change_label") is not None:
+            lines.append(
+                f"- Operating Margin Change: {metrics.get('operating_margin_change_label')} (Formula: {metrics.get('operating_margin_change_formula')})"
+            )
+        if metrics.get("net_margin_label") is not None:
+            lines.append(
+                f"- Net Margin: {metrics.get('net_margin_label')} (Formula: {metrics.get('net_margin_formula')})"
+            )
+        if metrics.get("net_margin_change_label") is not None:
+            lines.append(
+                f"- Net Margin Change: {metrics.get('net_margin_change_label')} (Formula: {metrics.get('net_margin_change_formula')})"
+            )
+        if metrics.get("opinc_growth_label") is not None:
+            lines.append(
+                f"- YoY Operating Income Growth: {metrics.get('opinc_growth_label')} (Formula: {metrics.get('opinc_growth_formula')})"
+            )
+        if metrics.get("net_income_growth_label") is not None:
+            lines.append(
+                f"- YoY Net Income Growth: {metrics.get('net_income_growth_label')} (Formula: {metrics.get('net_income_growth_formula')})"
+            )
+        if metrics.get("rd_growth_label") is not None:
+            lines.append(
+                f"- YoY R&D Expense Growth: {metrics.get('rd_growth_label')} (Formula: {metrics.get('rd_growth_formula')})"
+            )
+        if metrics.get("capex_growth_label") is not None:
+            lines.append(
+                f"- YoY Capital Expenditures Growth: {metrics.get('capex_growth_label')} (Formula: {metrics.get('capex_growth_formula')})"
+            )
+        if metrics.get("rd_percent_of_revenue_label") is not None:
+            lines.append(
+                f"- R&D as % of Revenue: {metrics.get('rd_percent_of_revenue_label')} (Formula: {metrics.get('rd_percent_of_revenue_formula')})"
+            )
+        if metrics.get("capex_percent_of_revenue_label") is not None:
+            lines.append(
+                f"- Capex as % of Revenue: {metrics.get('capex_percent_of_revenue_label')} (Formula: {metrics.get('capex_percent_of_revenue_formula')})"
+            )
+        if metrics.get("cost_percent_of_revenue_label") is not None:
+            lines.append(
+                f"- Cost of Revenue as % of Revenue: {metrics.get('cost_percent_of_revenue_label')} (Formula: {metrics.get('cost_percent_of_revenue_formula')})"
+            )
+
     lines.append("=== END VERIFIED FACTS ===")
     return "\n".join(lines)
 
@@ -453,6 +525,39 @@ class XBRLParser:
         prior_cash_val, prior_cash_accn = _get_metric_val_accn(annual_cash, prior_end) if prior_end else (None, None)
         prior_capex_val, prior_capex_accn = _get_metric_val_accn(annual_capex, prior_end) if prior_end else (None, None)
 
+        # Derived Financial Metrics & Ratios (Code-computed with exact formulas)
+        prior_opinc_margin = round((prior_opinc_val / prior_rev_val) * 100.0, 1) if (prior_opinc_val is not None and prior_rev_val) else None
+        cur_opinc_margin = round((cur_opinc_val / revenue_val) * 100.0, 1) if cur_opinc_val is not None else None
+        opinc_margin_change_pp = round(cur_opinc_margin - prior_opinc_margin, 1) if (cur_opinc_margin is not None and prior_opinc_margin is not None) else None
+
+        prior_net_margin = round((prior_ni_val / prior_rev_val) * 100.0, 1) if (prior_ni_val is not None and prior_rev_val) else None
+        cur_net_margin = round((cur_ni_val / revenue_val) * 100.0, 1) if cur_ni_val is not None else None
+        net_margin_change_pp = round(cur_net_margin - prior_net_margin, 1) if (cur_net_margin is not None and prior_net_margin is not None) else None
+
+        gross_margin_change_pp = round(gross_margin - prior_gross_margin, 1) if (gross_margin is not None and prior_gross_margin is not None) else None
+
+        opinc_growth_yoy = round(((cur_opinc_val - prior_opinc_val) / prior_opinc_val) * 100.0, 1) if (cur_opinc_val is not None and prior_opinc_val) else None
+        net_income_growth_yoy = round(((cur_ni_val - prior_ni_val) / prior_ni_val) * 100.0, 1) if (cur_ni_val is not None and prior_ni_val) else None
+        rd_growth_yoy = round(((cur_rd_val - prior_rd_val) / prior_rd_val) * 100.0, 1) if (cur_rd_val is not None and prior_rd_val) else None
+        capex_growth_yoy = round(((cur_capex_val - prior_capex_val) / prior_capex_val) * 100.0, 1) if (cur_capex_val is not None and prior_capex_val) else None
+
+        rd_pct_rev = round((cur_rd_val / revenue_val) * 100.0, 1) if (cur_rd_val is not None and revenue_val) else None
+        capex_pct_rev = round((cur_capex_val / revenue_val) * 100.0, 1) if (cur_capex_val is not None and revenue_val) else None
+        cost_pct_rev = round((cur_cost_val / revenue_val) * 100.0, 1) if (cur_cost_val is not None and revenue_val) else None
+
+        gm_change_formula = f"{gross_margin}% - {prior_gross_margin}% = {gross_margin_change_pp:+} pp" if gross_margin_change_pp is not None else None
+        opinc_margin_formula = f"${round(cur_opinc_val / 1e9, 2)}B / ${rev_in_billions}B = {cur_opinc_margin}%" if cur_opinc_margin is not None else None
+        opinc_margin_change_formula = f"{cur_opinc_margin}% - {prior_opinc_margin}% = {opinc_margin_change_pp:+} pp" if opinc_margin_change_pp is not None else None
+        net_margin_formula = f"${round(cur_ni_val / 1e9, 2)}B / ${rev_in_billions}B = {cur_net_margin}%" if cur_net_margin is not None else None
+        net_margin_change_formula = f"{cur_net_margin}% - {prior_net_margin}% = {net_margin_change_pp:+} pp" if net_margin_change_pp is not None else None
+        opinc_growth_formula = f"(${round(cur_opinc_val / 1e9, 2)}B - ${round(prior_opinc_val / 1e9, 2)}B) / ${round(prior_opinc_val / 1e9, 2)}B = {opinc_growth_yoy:+}%" if opinc_growth_yoy is not None else None
+        ni_growth_formula = f"(${round(cur_ni_val / 1e9, 2)}B - ${round(prior_ni_val / 1e9, 2)}B) / ${round(prior_ni_val / 1e9, 2)}B = {net_income_growth_yoy:+}%" if net_income_growth_yoy is not None else None
+        rd_growth_formula = f"(${round(cur_rd_val / 1e9, 2)}B - ${round(prior_rd_val / 1e9, 2)}B) / ${round(prior_rd_val / 1e9, 2)}B = {rd_growth_yoy:+}%" if rd_growth_yoy is not None else None
+        capex_growth_formula = f"(${round(cur_capex_val / 1e9, 2)}B - ${round(prior_capex_val / 1e9, 2)}B) / ${round(prior_capex_val / 1e9, 2)}B = {capex_growth_yoy:+}%" if capex_growth_yoy is not None else None
+        rd_pct_formula = f"${round(cur_rd_val / 1e9, 2)}B / ${rev_in_billions}B = {rd_pct_rev}%" if rd_pct_rev is not None else None
+        capex_pct_formula = f"${round(cur_capex_val / 1e9, 2)}B / ${rev_in_billions}B = {capex_pct_rev}%" if capex_pct_rev is not None else None
+        cost_pct_formula = f"${round(cur_cost_val / 1e9, 2)}B / ${rev_in_billions}B = {cost_pct_rev}%" if cost_pct_rev is not None else None
+
         return {
             "ticker": clean_ticker,
             "company_name": entity_name,
@@ -547,6 +652,44 @@ class XBRLParser:
             "driver_period": None,
             "driver_accession": None,
             "cloud_ai_revenue": None,
+            "gross_margin_change": gross_margin_change_pp,
+            "gross_margin_change_label": f"{gross_margin_change_pp:+} pp" if gross_margin_change_pp is not None else None,
+            "gross_margin_change_formula": gm_change_formula,
+            "operating_margin": cur_opinc_margin,
+            "operating_margin_label": f"{cur_opinc_margin}%" if cur_opinc_margin is not None else None,
+            "operating_margin_formula": opinc_margin_formula,
+            "prior_operating_margin": prior_opinc_margin,
+            "operating_margin_change": opinc_margin_change_pp,
+            "operating_margin_change_label": f"{opinc_margin_change_pp:+} pp" if opinc_margin_change_pp is not None else None,
+            "operating_margin_change_formula": opinc_margin_change_formula,
+            "net_margin": cur_net_margin,
+            "net_margin_label": f"{cur_net_margin}%" if cur_net_margin is not None else None,
+            "net_margin_formula": net_margin_formula,
+            "prior_net_margin": prior_net_margin,
+            "net_margin_change": net_margin_change_pp,
+            "net_margin_change_label": f"{net_margin_change_pp:+} pp" if net_margin_change_pp is not None else None,
+            "net_margin_change_formula": net_margin_change_formula,
+            "opinc_growth_yoy": opinc_growth_yoy,
+            "opinc_growth_label": f"{opinc_growth_yoy:+}%" if opinc_growth_yoy is not None else None,
+            "opinc_growth_formula": opinc_growth_formula,
+            "net_income_growth_yoy": net_income_growth_yoy,
+            "net_income_growth_label": f"{net_income_growth_yoy:+}%" if net_income_growth_yoy is not None else None,
+            "net_income_growth_formula": ni_growth_formula,
+            "rd_growth_yoy": rd_growth_yoy,
+            "rd_growth_label": f"{rd_growth_yoy:+}%" if rd_growth_yoy is not None else None,
+            "rd_growth_formula": rd_growth_formula,
+            "capex_growth_yoy": capex_growth_yoy,
+            "capex_growth_label": f"{capex_growth_yoy:+}%" if capex_growth_yoy is not None else None,
+            "capex_growth_formula": capex_growth_formula,
+            "rd_percent_of_revenue": rd_pct_rev,
+            "rd_percent_of_revenue_label": f"{rd_pct_rev}%" if rd_pct_rev is not None else None,
+            "rd_percent_of_revenue_formula": rd_pct_formula,
+            "capex_percent_of_revenue": capex_pct_rev,
+            "capex_percent_of_revenue_label": f"{capex_pct_rev}%" if capex_pct_rev is not None else None,
+            "capex_percent_of_revenue_formula": capex_pct_formula,
+            "cost_percent_of_revenue": cost_pct_rev,
+            "cost_percent_of_revenue_label": f"{cost_pct_rev}%" if cost_pct_rev is not None else None,
+            "cost_percent_of_revenue_formula": cost_pct_formula,
             "sentiment": (
                 f"FY {fy} (ended {period_end}): Revenue ${rev_in_billions}B"
                 + (f", YoY {growth_yoy:+}%" if growth_yoy is not None else "")
@@ -556,16 +699,172 @@ class XBRLParser:
         }
 
 
+def convert_table_to_structured_text(table_tag: Any, surrounding_text: str = "") -> str:
+    """Converts an HTML table into structured text rows.
+
+    Handles:
+    - '$' in separate cells
+    - Negatives in parentheses: '(x)' -> '-x'
+    - Em/en dashes: '—'
+    - Colspan and multi-row headers without duplicating line items
+    - Footnote markers
+    - Units in caption or header
+    - Layout table neutralization/dropping
+    """
+    all_text = table_tag.get_text(separator=" ")
+    clean_all = re.sub(r"\s+", " ", all_text).strip()
+
+    # Drop signature blocks, cover page metadata, and empty TOC tables
+    if any(sig in clean_all for sig in ["/s/", "By:", "Title:", "Indicate by check mark"]):
+        num_matches = re.findall(r"\b\d{1,3}(?:,\d{3})+\b", clean_all)
+        if len(num_matches) < 2:
+            return ""
+
+    unit_match = re.search(
+        r"\((?:in\s+millions|in\s+thousands|in\s+billions|\$\s*in\s+millions|usd\s+millions|in\s+millions,\s*except[^\)]*)\)",
+        clean_all[:400] + " " + surrounding_text,
+        re.I,
+    )
+    units_str = unit_match.group(0).strip() if unit_match else ""
+    if not units_str and "in millions" in clean_all[:200].lower():
+        units_str = "(in millions)"
+
+    trs = table_tag.find_all("tr")
+    if not trs:
+        return ""
+
+    grid: list[list[str]] = []
+    for tr in trs:
+        row_cells: list[str] = []
+        for cell in tr.find_all(["td", "th"]):
+            colspan = int(cell.get("colspan", 1))
+            c_text = cell.get_text(separator=" ")
+            c_text = re.sub(r"\s+", " ", c_text).strip()
+            row_cells.append(c_text)
+            for _ in range(colspan - 1):
+                row_cells.append("")
+        grid.append(row_cells)
+
+    if not grid:
+        return ""
+
+    cleaned_rows: list[list[str]] = []
+    for r in grid:
+        merged: list[str] = []
+        i = 0
+        while i < len(r):
+            val = r[i]
+            if val == "$" and i + 1 < len(r) and re.search(r"\d", r[i + 1]):
+                val = "$" + r[i + 1]
+                i += 1
+            elif val == "(" and i + 1 < len(r) and re.search(r"\d", r[i + 1]):
+                if i + 2 < len(r) and r[i + 2] == ")":
+                    val = f"-{r[i + 1]}"
+                    i += 2
+                else:
+                    val = f"-{r[i + 1]}"
+                    i += 1
+            paren_m = re.match(r"^\(\s*[\$]?\s*([0-9,.]+)\s*\)$", val)
+            if paren_m:
+                val = f"-{paren_m.group(1)}"
+            cur_paren = re.match(r"^\(?\s*\$\s*\(?\s*([0-9,.]+)\s*\)?\)?$", val)
+            if cur_paren and ("(" in val or ")" in val):
+                val = f"-${cur_paren.group(1)}"
+
+            val = re.sub(r"\s*\([a-z0-9]\)$", "", val, flags=re.I).strip()
+            if val in ["—", "–", "-"]:
+                val = "—"
+            if val:
+                merged.append(val)
+            i += 1
+        if merged:
+            cleaned_rows.append(merged)
+
+    if not cleaned_rows:
+        return ""
+
+    col_headers: list[str] = []
+    data_start = 0
+    for r_idx, r in enumerate(cleaned_rows[:4]):
+        years = [re.search(r"\b(202\d)\b", c) for c in r]
+        has_years = any(years)
+        has_values = any(re.search(r"^\$?-?\d{1,3}(?:,\d{3})+(?:\.\d+)?$", c) for c in r)
+        if has_years or (not has_values and r_idx == 0):
+            extracted: list[str] = []
+            for c in r:
+                ym = re.search(r"\b(202\d)\b", c)
+                if ym:
+                    extracted.append(f"FY{ym.group(1)}")
+                elif re.search(r"[a-zA-Z]", c) and len(c) < 30:
+                    extracted.append(c)
+            if extracted:
+                col_headers = extracted
+            data_start = r_idx + 1
+        else:
+            break
+
+    lines: list[str] = []
+    for r in cleaned_rows[data_start:]:
+        label = ""
+        vals: list[str] = []
+        for c in r:
+            is_val = bool(re.search(r"^\$?-?\d", c) or c == "—" or "%" in c or "pts" in c)
+            if not label and not is_val:
+                label = c
+            else:
+                if is_val:
+                    vals.append(c)
+                elif not label:
+                    label = c
+                else:
+                    label += f" {c}"
+        if not label or not vals:
+            continue
+
+        active_headers = col_headers
+        if len(active_headers) == len(vals) + 1:
+            active_headers = active_headers[1:]
+        elif len(active_headers) > len(vals) and active_headers and active_headers[0].lower() in [
+            "line item", "metric", "description", "statement", "consolidated statement", "company / index", "impact"
+        ]:
+            active_headers = active_headers[1:]
+
+        parts = [label]
+        for v_idx, v in enumerate(vals):
+            if v_idx < len(active_headers):
+                parts.append(f"{active_headers[v_idx]}: {v}")
+            else:
+                parts.append(v)
+
+        line = " | ".join(parts)
+        if units_str and units_str not in line:
+            line += f" {units_str}"
+        lines.append(line)
+
+    return "\n".join(lines)
+
+
 class Form10KParser:
     """Extracts Items 1, 1A, 7, 8 from Form 10-K primary document HTML/text."""
 
     @staticmethod
     def html_to_clean_text(html_content: str) -> str:
-        """Strips HTML formatting, scripts, and normalizes whitespace."""
+        """Strips scripts/styles, converts HTML tables to structured line-item text, and normalizes whitespace."""
         soup = BeautifulSoup(html_content, "lxml")
-        for tag in soup(["script", "style", "table", "noscript"]):
+        for tag in soup(["script", "style", "noscript"]):
             tag.decompose()
+
+        for tbl in soup.find_all("table"):
+            prev = tbl.find_previous(["p", "div", "h1", "h2", "h3", "h4", "span"])
+            prev_text = prev.get_text() if prev else ""
+            converted = convert_table_to_structured_text(tbl, prev_text)
+            if converted:
+                tbl.replace_with(soup.new_string(f"\n[TABLE_START]\n{converted}\n[TABLE_END]\n"))
+            else:
+                tbl.decompose()
+
         text = soup.get_text(separator="\n")
+        text = text.replace("\xa0", " ")
         lines = [line.strip() for line in text.splitlines()]
         clean_lines = [line for line in lines if line]
         return "\n".join(clean_lines)
@@ -574,7 +873,8 @@ class Form10KParser:
     def extract_items(cls, text: str) -> dict[str, str]:
         """Extracts Item 1, Item 1A, Item 7, Item 8 text blocks.
 
-        Handles drop caps, broken words, and avoids table of contents.
+        Handles drop caps, broken words, table of contents avoidance,
+        and redirects Item 8 to Item 15 when Item 8 is a short cross-reference.
         """
         results = {
             "Item 1": "",
@@ -648,7 +948,7 @@ class Form10KParser:
             e7 = s7 + 100 + end_7.start() if end_7 else s7 + 60000
             results["Item 7"] = text[s7:e7].strip()
 
-        # Slicing Item 8
+        # Slicing Item 8 (with Item 15 redirection when Item 8 is a short cross-reference)
         if m8:
             s8 = m8[-1].start()
             end_8 = re.search(
@@ -657,7 +957,32 @@ class Form10KParser:
                 re.IGNORECASE,
             )
             e8 = s8 + 100 + end_8.start() if end_8 else s8 + 60000
-            results["Item 8"] = text[s8:e8].strip()
+            item8_text = text[s8:e8].strip()
+
+            item8_words = len(item8_text.split())
+            if item8_words < 100 and any(
+                k in item8_text.lower()
+                for k in ["item 15", "part iv", "set forth", "consolidated financial statements"]
+            ):
+                m15 = list(re.finditer(
+                    r"(?:^|\n)\s*(?:ITEM\s+15\.?|Item\s+15\.?)\s*(?:[-:–—]\s*)?EXHIBITS",
+                    text,
+                    re.IGNORECASE,
+                ))
+                if m15:
+                    s15 = m15[-1].start()
+                    end_15 = re.search(
+                        r"(?:^|\n)\s*(?:ITEM\s+16\.?|Item\s+16\.?|SIGNATURES)",
+                        text[s15 + 100:],
+                        re.IGNORECASE,
+                    )
+                    e15 = s15 + 100 + end_15.start() if end_15 else s15 + 150000
+                    item8_text = (
+                        f"{item8_text}\n\n"
+                        f"=== FINANCIAL STATEMENTS & NOTES (VIA ITEM 15 REDIRECT) ===\n\n"
+                        f"{text[s15:e15].strip()}"
+                    )
+            results["Item 8"] = item8_text
 
         return results
 

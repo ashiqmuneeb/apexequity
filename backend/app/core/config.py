@@ -61,7 +61,8 @@ class Settings(BaseSettings):
     SECTION_BOOST_ENABLED: bool = False
     QUERY_EXPANSION_ENABLED: bool = False
     DETERMINISTIC_LOOKUP_ENABLED: bool = True
-    TABLE_EXEMPTION_ENABLED: bool = False
+    # Phase 4d: Defaulted to True because table conversion is enabled and financial tables exist in the corpus
+    TABLE_EXEMPTION_ENABLED: bool = True
 
     # Security & CORS
     ALLOWED_ORIGINS: str = (

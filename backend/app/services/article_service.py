@@ -42,7 +42,7 @@ class ArticleService:
             indexable.append(f)
         return indexable
 
-    CHUNKER_VERSION = "v3_tables_item15"
+    CHUNKER_VERSION = "v4_tables_iso_dates"
 
     def _compute_hashes(self) -> dict[str, str]:
         """Computes SHA256 hashes of indexable text files, salted with chunker version and settings
@@ -281,10 +281,11 @@ class ArticleService:
             content = f.read_text(encoding="utf-8")
 
             # Remove prior chunks for this file if present
-            try:
-                col.delete(where={"file_name": f.name})
-            except Exception:
-                pass
+            if col.count() > 0:
+                try:
+                    col.delete(where={"file_name": f.name})
+                except Exception:
+                    pass
 
             nodes = section_chunker.chunk_file(f, content)
             if not nodes:

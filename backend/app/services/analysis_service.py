@@ -15,7 +15,10 @@ from app.services.metrics_service import metrics_service
 from app.services.number_validator import number_validator
 from app.services.rag_engine import QA_PROMPT_TEMPLATE, rag_engine_service
 from app.services.retrieval_service import retrieval_service
-from app.services.sec_service import format_verified_facts
+from app.services.sec_service import (
+    format_audited_financial_summary,
+    format_verified_facts,
+)
 
 
 KNOWN_TICKERS = {"NVDA", "MSFT", "AAPL", "GOOGL", "AMD"}
@@ -141,6 +144,11 @@ class AnalysisService:
             validated_report, unsupported = number_validator.validate(
                 raw_answer, facts_block, metrics, source_texts
             )
+
+            # For full institutional stock dossiers, render Audited Financial Summary directly in code
+            if not custom_prompt or not custom_prompt.strip():
+                audited_summary = format_audited_financial_summary(metrics)
+                validated_report = f"{audited_summary}\n\n### Qualitative Strategic & Operating Analysis\n\n{validated_report}"
 
             return AnalysisResponse(
                 ticker=clean_ticker,

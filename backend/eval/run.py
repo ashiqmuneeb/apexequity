@@ -490,6 +490,14 @@ def run_evaluation(
     return results_data
 
 
+def _fmt_pct(val: float | None) -> str:
+    return f"{val * 100:.1f}%" if val is not None else "n/a"
+
+
+def _fmt_float(val: float | None, digits: int = 3) -> str:
+    return f"{val:.{digits}f}" if val is not None else "n/a"
+
+
 def write_evaluation_markdown(results: dict[str, Any], output_path: Path) -> None:
     """Renders comprehensive, institutional EVALUATION.md document."""
     meta = results["metadata"]
@@ -503,9 +511,9 @@ def write_evaluation_markdown(results: dict[str, Any], output_path: Path) -> Non
     lat = metrics.get("latency_sec", {})
     faith = metrics.get("faithfulness", {})
 
-    r_recall_a = retrieval.get("recall_at_5_key_phrases", 0.0)
+    r_recall_a = retrieval.get("recall_at_5_key_phrases")
     low_recall_warning = ""
-    if r_recall_a < 0.8:
+    if r_recall_a is not None and r_recall_a < 0.8:
         low_recall_warning = (
             "> [!WARNING]\n"
             f"> **Retrieval Recall@5 is {r_recall_a * 100:.1f}% (< 80%)**.\n"
@@ -513,7 +521,10 @@ def write_evaluation_markdown(results: dict[str, Any], output_path: Path) -> Non
             "> Specific failing questions and retrieval architectural adjustments are detailed in Section 5 below.\n\n"
         )
 
-    faith_val_str = f"{faith.get('score', 1.0):.3f}" if faith.get('score') is not None else "N/A"
+    faith_val_str = f"{faith.get('score'):.3f}" if faith.get('score') is not None else "n/a"
+    lat_p50 = f"{lat.get('p50')}s" if lat.get('p50') is not None else "n/a"
+    lat_p95 = f"{lat.get('p95')}s" if lat.get('p95') is not None else "n/a"
+
     md = (
         f"# System Evaluation Report: ApexEquity RAG Pipeline\n\n"
         f"**Evaluation Run Timestamp**: `{meta.get('timestamp')}`  \n"
@@ -526,21 +537,21 @@ def write_evaluation_markdown(results: dict[str, Any], output_path: Path) -> Non
         f"{low_recall_warning}## 1. Executive Summary & Aggregate Metrics\n\n"
         f"| Metric Category | Metric Name | Definition / Scope | Score / Value | Status |\n"
         f"| :--- | :--- | :--- | :--- | :--- |\n"
-        f"| **Retrieval** | **Recall@5 (Normalized)** | Chunk contains >= 2 required key phrases (bug fix) | **{retrieval.get('recall_at_5_key_phrases', 0.0) * 100:.1f}%** | {'[PASS]' if r_recall_a >= 0.8 else '[NEEDS ATTENTION]'} |\n"
-        f"| **Retrieval** | **MRR (Normalized)** | Mean Reciprocal Rank across top-5 chunks (normalized) | **{retrieval.get('mrr_key_phrases', 0.0):.3f}** | Institutional grade |\n"
-        f"| **Retrieval** | **Recall@5 (Raw Unnormalized)** | Case/whitespace exact substring | **{retrieval.get('recall_at_5_raw', 0.0) * 100:.1f}%** | Unnormalized |\n"
-        f"| **Retrieval** | **MRR (Raw Unnormalized)** | Raw substring reciprocal rank | **{retrieval.get('mrr_raw', 0.0):.3f}** | Unnormalized |\n"
-        f"| **Retrieval** | **Recall@5 (Strict Section)** | Key phrases AND exact matching Item section | **{retrieval.get('recall_at_5_strict_item', 0.0) * 100:.1f}%** | Strict audit |\n"
-        f"| **Retrieval** | **MRR (Strict Section)** | Mean Reciprocal Rank (Key phrases + Item match) | **{retrieval.get('mrr_strict_item', 0.0):.3f}** | Strict audit |\n"
-        f"| **Numeric Accuracy** | **Overall Numeric Accuracy** | Decimal-rounded match against XBRL facts | **{num_acc.get('overall', 0.0) * 100:.1f}%** | Ground-truth XBRL |\n"
-        f"| **Numeric Accuracy** | **Injected Facts Accuracy** | Revenue, Gross Margin, YoY Growth (injected) | **{num_acc.get('injected_facts', 0.0) * 100:.1f}%** | Injected facts |\n"
-        f"| **Numeric Accuracy** | **Deterministic Lookup Accuracy** | Operating Income, Net Income, R&D, Cash, CapEx | **{num_acc.get('deterministic_lookup', 0.0) * 100:.1f}%** | Verified Facts Table |\n"
-        f"| **Numeric Accuracy** | **Not-Injected Facts Accuracy** | Pure retrieval without deterministic lookup | **{num_acc.get('not_injected', 0.0) * 100:.1f}%** | Pure retrieval |\n"
-        f"| **Citations** | **Citation Precision** | Cited chunks `[k]` contain claimed fact/phrase | **{metrics.get('citation_precision', 1.0) * 100:.1f}%** | Grounding check |\n"
-        f"| **Refusal** | **Refusal Accuracy** | Exact refusal on out-of-scope/uncovered items | **{refusal.get('accuracy', 1.0) * 100:.1f}%** | {refusal.get('refusals_by_model')} model, {refusal.get('refusals_by_404_api')} 404 API |\n"
-        f"| **Refusal** | **False-Refusal Rate** | Refused on valid answerable questions | **{refusal.get('false_refusal_rate', 0.0) * 100:.1f}%** | Target: 0.0% |\n"
-        f"| **Grounding** | **Unverified Number Rate** | Claims unverified by NumberValidator | **{grounding.get('unverified_number_rate', 0.0) * 100:.1f}%** | ({grounding.get('unverified_number_claims')}/{grounding.get('total_number_claims')} claims) |\n"
-        f"| **Performance** | **Latency p50 / p95** | 50th / 95th percentile total query runtime | **{lat.get('p50', 0.0)}s / {lat.get('p95', 0.0)}s** | Pipeline latency |\n"
+        f"| **Retrieval** | **Recall@5 (Normalized)** | Chunk contains >= 2 required key phrases (bug fix) | **{_fmt_pct(retrieval.get('recall_at_5_key_phrases'))}** | {'[PASS]' if (r_recall_a is not None and r_recall_a >= 0.8) else ('n/a' if r_recall_a is None else '[NEEDS ATTENTION]')} |\n"
+        f"| **Retrieval** | **MRR (Normalized)** | Mean Reciprocal Rank across top-5 chunks (normalized) | **{_fmt_float(retrieval.get('mrr_key_phrases'))}** | Institutional grade |\n"
+        f"| **Retrieval** | **Recall@5 (Raw Unnormalized)** | Case/whitespace exact substring | **{_fmt_pct(retrieval.get('recall_at_5_raw'))}** | Unnormalized |\n"
+        f"| **Retrieval** | **MRR (Raw Unnormalized)** | Raw substring reciprocal rank | **{_fmt_float(retrieval.get('mrr_raw'))}** | Unnormalized |\n"
+        f"| **Retrieval** | **Recall@5 (Strict Section)** | Key phrases AND exact matching Item section | **{_fmt_pct(retrieval.get('recall_at_5_strict_item'))}** | Strict audit |\n"
+        f"| **Retrieval** | **MRR (Strict Section)** | Mean Reciprocal Rank (Key phrases + Item match) | **{_fmt_float(retrieval.get('mrr_strict_item'))}** | Strict audit |\n"
+        f"| **Numeric Accuracy** | **Overall Numeric Accuracy** | Decimal-rounded match against XBRL facts | **{_fmt_pct(num_acc.get('overall'))}** | Ground-truth XBRL |\n"
+        f"| **Numeric Accuracy** | **Injected Facts Accuracy** | Revenue, Gross Margin, YoY Growth (injected) | **{_fmt_pct(num_acc.get('injected_facts'))}** | Injected facts |\n"
+        f"| **Numeric Accuracy** | **Deterministic Lookup Accuracy** | Operating Income, Net Income, R&D, Cash, CapEx | **{_fmt_pct(num_acc.get('deterministic_lookup'))}** | Verified Facts Table |\n"
+        f"| **Numeric Accuracy** | **Not-Injected Facts Accuracy** | Pure retrieval without deterministic lookup | **{_fmt_pct(num_acc.get('not_injected'))}** | Pure retrieval |\n"
+        f"| **Citations** | **Citation Precision** | Cited chunks `[k]` contain claimed fact/phrase | **{_fmt_pct(metrics.get('citation_precision'))}** | Grounding check |\n"
+        f"| **Refusal** | **Refusal Accuracy** | Exact refusal on out-of-scope/uncovered items | **{_fmt_pct(refusal.get('accuracy'))}** | {refusal.get('refusals_by_model', 'n/a')} model, {refusal.get('refusals_by_404_api', 'n/a')} 404 API |\n"
+        f"| **Refusal** | **False-Refusal Rate** | Refused on valid answerable questions | **{_fmt_pct(refusal.get('false_refusal_rate'))}** | Target: 0.0% |\n"
+        f"| **Grounding** | **Unverified Number Rate** | Claims unverified by NumberValidator | **{_fmt_pct(grounding.get('unverified_number_rate'))}** | ({grounding.get('unverified_number_claims', 0)}/{grounding.get('total_number_claims', 0)} claims) |\n"
+        f"| **Performance** | **Latency p50 / p95** | 50th / 95th percentile total query runtime | **{lat_p50} / {lat_p95}** | Pipeline latency |\n"
         f"| **Faithfulness** | **Faithfulness Score** | {faith.get('label', 'LLM-judged')} | **{faith_val_str}** | {faith.get('label')} |\n\n"
         f"---\n\n"
         f"## 2. Top 10 Failure Cases & Root Cause Analysis\n\n"
@@ -617,12 +628,12 @@ def main():
     print("EVALUATION SUMMARY")
     print("=======================================================")
     print(f"Evaluated Items: {results['metadata']['evaluated_items_count']}")
-    print(f"Recall@5 (Normalized): {retrieval.get('recall_at_5_key_phrases', 0.0) * 100:.1f}%")
-    print(f"MRR (Normalized): {retrieval.get('mrr_key_phrases', 0.0):.3f}")
-    print(f"Recall@5 (Raw): {retrieval.get('recall_at_5_raw', 0.0) * 100:.1f}%")
-    print(f"MRR (Raw): {retrieval.get('mrr_raw', 0.0):.3f}")
-    print(f"Numeric Accuracy: {num_acc.get('overall', 0.0) * 100:.1f}% (Injected: {num_acc.get('injected_facts', 0.0) * 100:.1f}%, Det. Lookup: {num_acc.get('deterministic_lookup', 0.0) * 100:.1f}%, Not-injected: {num_acc.get('not_injected', 0.0) * 100:.1f}%)")
-    print(f"Refusal Accuracy: {metrics.get('refusal', {}).get('accuracy', 1.0) * 100:.1f}%")
+    print(f"Recall@5 (Normalized): {_fmt_pct(retrieval.get('recall_at_5_key_phrases'))}")
+    print(f"MRR (Normalized): {_fmt_float(retrieval.get('mrr_key_phrases'))}")
+    print(f"Recall@5 (Raw): {_fmt_pct(retrieval.get('recall_at_5_raw'))}")
+    print(f"MRR (Raw): {_fmt_float(retrieval.get('mrr_raw'))}")
+    print(f"Numeric Accuracy: {_fmt_pct(num_acc.get('overall'))} (Injected: {_fmt_pct(num_acc.get('injected_facts'))}, Det. Lookup: {_fmt_pct(num_acc.get('deterministic_lookup'))}, Not-injected: {_fmt_pct(num_acc.get('not_injected'))})")
+    print(f"Refusal Accuracy: {_fmt_pct(metrics.get('refusal', {}).get('accuracy'))}")
     print(f"Section Boost changed top-5: {retrieval.get('boost_changed_top5_count', 0)} times")
     print("=======================================================\n")
 

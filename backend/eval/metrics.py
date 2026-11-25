@@ -186,8 +186,15 @@ def evaluate_citation_precision(
     return precision, verified, total
 
 
+def _round_opt(val: float | None, digits: int = 4) -> float | None:
+    return round(float(val), digits) if val is not None else None
+
+
 def compute_aggregate_metrics(eval_records: list[dict[str, Any]]) -> dict[str, Any]:
-    """Aggregates benchmark metrics across categories: numeric, qualitative, and unanswerable."""
+    """Aggregates benchmark metrics across categories: numeric, qualitative, and unanswerable.
+    
+    Empty sets strictly return None so that metrics format as 'n/a' without misleading defaults.
+    """
     total_items = len(eval_records)
     if total_items == 0:
         return {}
@@ -205,83 +212,95 @@ def compute_aggregate_metrics(eval_records: list[dict[str, Any]]) -> dict[str, A
     # 1. Retrieval Recall@5 & MRR (both raw and normalized per Condition 4)
     # Chunk-based retrieval (Condition 3 of Phase 4c)
     hits_chunk_5 = sum(1 for r in qual_records if r.get("chunk_hit_at_5", r.get("chunk_hit", False)))
-    recall_chunk_5 = hits_chunk_5 / len(qual_records) if qual_records else 1.0
+    recall_chunk_5 = hits_chunk_5 / len(qual_records) if qual_records else None
     hits_chunk_10 = sum(1 for r in qual_records if r.get("chunk_hit_at_10", r.get("chunk_hit", False)))
-    recall_chunk_10 = hits_chunk_10 / len(qual_records) if qual_records else 1.0
+    recall_chunk_10 = hits_chunk_10 / len(qual_records) if qual_records else None
     mrr_chunk = (
-        np.mean([1.0 / r["chunk_rank"] if r.get("chunk_rank") else 0.0 for r in qual_records])
+        float(np.mean([1.0 / r["chunk_rank"] if r.get("chunk_rank") else 0.0 for r in qual_records]))
         if qual_records
-        else 1.0
+        else None
     )
 
     # Normalized (Condition 4 bug fix)
     hits_a_norm_5 = sum(1 for r in qual_records if r.get("hit_a_norm_5", r.get("hit_a_norm", r.get("hit_a", False))))
-    recall_a_norm_5 = hits_a_norm_5 / len(qual_records) if qual_records else 1.0
+    recall_a_norm_5 = hits_a_norm_5 / len(qual_records) if qual_records else None
     hits_a_norm_10 = sum(1 for r in qual_records if r.get("hit_a_norm_10", r.get("hit_a_norm", r.get("hit_a", False))))
-    recall_a_norm_10 = hits_a_norm_10 / len(qual_records) if qual_records else 1.0
-    mrr_a_norm = np.mean([1.0 / r["rank_a_norm"] if r.get("rank_a_norm") else (1.0 / r["rank_a"] if r.get("rank_a") else 0.0) for r in qual_records]) if qual_records else 1.0
+    recall_a_norm_10 = hits_a_norm_10 / len(qual_records) if qual_records else None
+    mrr_a_norm = (
+        float(np.mean([1.0 / r["rank_a_norm"] if r.get("rank_a_norm") else (1.0 / r["rank_a"] if r.get("rank_a") else 0.0) for r in qual_records]))
+        if qual_records
+        else None
+    )
 
     # Raw unnormalized
     hits_a_raw = sum(1 for r in qual_records if r.get("hit_a_raw", r.get("hit_a", False)))
-    recall_a_raw = hits_a_raw / len(qual_records) if qual_records else 1.0
-    mrr_a_raw = np.mean([1.0 / r["rank_a_raw"] if r.get("rank_a_raw") else (1.0 / r["rank_a"] if r.get("rank_a") else 0.0) for r in qual_records]) if qual_records else 1.0
+    recall_a_raw = hits_a_raw / len(qual_records) if qual_records else None
+    mrr_a_raw = (
+        float(np.mean([1.0 / r["rank_a_raw"] if r.get("rank_a_raw") else (1.0 / r["rank_a"] if r.get("rank_a") else 0.0) for r in qual_records]))
+        if qual_records
+        else None
+    )
 
     # Definition B (Strict section hit)
     hits_b = sum(1 for r in qual_records if r.get("hit_b", False))
-    recall_b = hits_b / len(qual_records) if qual_records else 1.0
-    mrr_b = np.mean([1.0 / r["rank_b"] if r.get("rank_b") else 0.0 for r in qual_records]) if qual_records else 1.0
+    recall_b = hits_b / len(qual_records) if qual_records else None
+    mrr_b = (
+        float(np.mean([1.0 / r["rank_b"] if r.get("rank_b") else 0.0 for r in qual_records]))
+        if qual_records
+        else None
+    )
 
-    # 2. Numeric Accuracy (split into injected, deterministic lookup, and not injected per Condition 10)
+    # 2. Numeric Accuracy
     acc_overall_num = (
         sum(1 for r in numeric_records if r.get("numeric_correct", False)) / len(numeric_records)
         if numeric_records
-        else 0.0
+        else None
     )
     acc_injected = (
         sum(1 for r in injected_num if r.get("numeric_correct", False)) / len(injected_num)
         if injected_num
-        else 0.0
+        else None
     )
     acc_deterministic = (
         sum(1 for r in det_lookup_num if r.get("numeric_correct", False)) / len(det_lookup_num)
         if det_lookup_num
-        else 0.0
+        else None
     )
     acc_not_injected = (
         sum(1 for r in not_injected_num if r.get("numeric_correct", False)) / len(not_injected_num)
         if not_injected_num
-        else 0.0
+        else None
     )
 
     # 3. Citation Precision
     total_cit_verified = sum(r.get("citation_verified", 0) for r in eval_records)
     total_cit_count = sum(r.get("citation_total", 0) for r in eval_records)
     overall_cit_precision = (
-        round(total_cit_verified / total_cit_count, 4) if total_cit_count > 0 else 1.0
+        total_cit_verified / total_cit_count if total_cit_count > 0 else None
     )
 
-    # 4. Refusal Accuracy & False Refusal Rate (Condition 6)
+    # 4. Refusal Accuracy & False Refusal Rate
     unans_correct = sum(1 for r in unans_records if r.get("refusal_correct", False))
     unans_by_model = sum(1 for r in unans_records if r.get("refusal_by") == "model")
     unans_by_404 = sum(1 for r in unans_records if r.get("refusal_by") == "404_api")
-    refusal_accuracy = unans_correct / len(unans_records) if unans_records else 1.0
+    refusal_accuracy = unans_correct / len(unans_records) if unans_records else None
 
     # False refusal rate on answerable queries (numeric + qualitative)
     answerable = numeric_records + qual_records
     false_refusals = sum(1 for r in answerable if r.get("is_refusal", False))
-    false_refusal_rate = false_refusals / len(answerable) if answerable else 0.0
+    false_refusal_rate = false_refusals / len(answerable) if answerable else None
 
     # 5. Unverified-Number Rate
     total_claims = sum(r.get("total_claims", 0) for r in eval_records)
     unverified_claims = sum(r.get("unverified_claims", 0) for r in eval_records)
     unverified_rate = (
-        round(unverified_claims / total_claims, 4) if total_claims > 0 else 0.0
+        unverified_claims / total_claims if total_claims > 0 else None
     )
 
     # 6. Latency Percentiles
     latencies = [r.get("latency_sec", 0.0) for r in eval_records if r.get("latency_sec") is not None]
-    p50_lat = round(float(np.percentile(latencies, 50)), 3) if latencies else 0.0
-    p95_lat = round(float(np.percentile(latencies, 95)), 3) if latencies else 0.0
+    p50_lat = round(float(np.percentile(latencies, 50)), 3) if latencies else None
+    p95_lat = round(float(np.percentile(latencies, 95)), 3) if latencies else None
 
     # 7. Faithfulness (LLM-judged)
     judged_records = [r for r in eval_records if r.get("judge_score") is not None]
@@ -294,34 +313,34 @@ def compute_aggregate_metrics(eval_records: list[dict[str, Any]]) -> dict[str, A
     return {
         "dataset_size": total_items,
         "retrieval": {
-            "chunk_recall_at_5": round(recall_chunk_5, 4),
-            "chunk_recall_at_10": round(recall_chunk_10, 4),
-            "chunk_mrr": round(float(mrr_chunk), 4),
-            "recall_at_5_key_phrases": round(recall_a_norm_5, 4),
-            "recall_at_10_key_phrases": round(recall_a_norm_10, 4),
-            "mrr_key_phrases": round(float(mrr_a_norm), 4),
-            "recall_at_5_raw": round(recall_a_raw, 4),
-            "mrr_raw": round(float(mrr_a_raw), 4),
-            "recall_at_5_strict_item": round(recall_b, 4),
-            "mrr_strict_item": round(float(mrr_b), 4),
+            "chunk_recall_at_5": _round_opt(recall_chunk_5, 4),
+            "chunk_recall_at_10": _round_opt(recall_chunk_10, 4),
+            "chunk_mrr": _round_opt(mrr_chunk, 4),
+            "recall_at_5_key_phrases": _round_opt(recall_a_norm_5, 4),
+            "recall_at_10_key_phrases": _round_opt(recall_a_norm_10, 4),
+            "mrr_key_phrases": _round_opt(mrr_a_norm, 4),
+            "recall_at_5_raw": _round_opt(recall_a_raw, 4),
+            "mrr_raw": _round_opt(mrr_a_raw, 4),
+            "recall_at_5_strict_item": _round_opt(recall_b, 4),
+            "mrr_strict_item": _round_opt(mrr_b, 4),
         },
         "numeric_accuracy": {
-            "overall": round(acc_overall_num, 4),
-            "injected_facts": round(acc_injected, 4),
-            "deterministic_lookup": round(acc_deterministic, 4),
-            "not_injected": round(acc_not_injected, 4),
+            "overall": _round_opt(acc_overall_num, 4),
+            "injected_facts": _round_opt(acc_injected, 4),
+            "deterministic_lookup": _round_opt(acc_deterministic, 4),
+            "not_injected": _round_opt(acc_not_injected, 4),
         },
-        "citation_precision": overall_cit_precision,
+        "citation_precision": _round_opt(overall_cit_precision, 4),
         "refusal": {
-            "accuracy": round(refusal_accuracy, 4),
-            "refusals_by_model": unans_by_model,
-            "refusals_by_404_api": unans_by_404,
-            "false_refusal_rate": round(false_refusal_rate, 4),
+            "accuracy": _round_opt(refusal_accuracy, 4),
+            "refusals_by_model": unans_by_model if unans_records else None,
+            "refusals_by_404_api": unans_by_404 if unans_records else None,
+            "false_refusal_rate": _round_opt(false_refusal_rate, 4),
         },
         "grounding": {
-            "total_number_claims": total_claims,
-            "unverified_number_claims": unverified_claims,
-            "unverified_number_rate": unverified_rate,
+            "total_number_claims": total_claims if total_claims > 0 else None,
+            "unverified_number_claims": unverified_claims if total_claims > 0 else None,
+            "unverified_number_rate": _round_opt(unverified_rate, 4),
         },
         "latency_sec": {
             "p50": p50_lat,

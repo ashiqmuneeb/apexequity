@@ -70,6 +70,14 @@ CAPEX_TAGS = [
     "PaymentsToAcquireProductiveAssets",
 ]
 
+ASSETS_TAGS = [
+    "Assets",
+]
+
+OPERATING_CASH_FLOW_TAGS = [
+    "NetCashProvidedByUsedInOperatingActivities",
+]
+
 
 def validate_user_agent(user_agent: str | None) -> str:
     """Validates SEC EDGAR User-Agent according to SEC policy.
@@ -349,70 +357,188 @@ def format_verified_facts(metrics: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def format_audited_financial_summary(metrics: dict[str, Any]) -> str:
+    """Renders the institutional Audited Financial Summary of the dossier in code from structured XBRL facts.
+
+    All metrics, tags, dates, and accessions are rendered with zero default/fallback numbers.
+    Missing values render strictly as 'n/a'.
+    Free Cash Flow is rendered ONLY if both Operating Cash Flow and Capex are present.
+    """
+    ticker = metrics.get("ticker") or "UNKNOWN"
+    company = metrics.get("company_name") or ticker
+    accn = metrics.get("accession_number") or "n/a"
+    period_end = metrics.get("period_end_date") or "n/a"
+    fy = metrics.get("fiscal_year") or "n/a"
+
+    def _fmt_row(
+        name: str,
+        val_label: str | None,
+        raw_val: float | None,
+        period: str | None,
+        row_accn: str | None,
+        tag: str | None,
+    ) -> str:
+        if val_label is not None and val_label != "n/a" and raw_val is not None:
+            val_str = f"{val_label} ({raw_val:,.0f} USD)"
+        elif val_label is not None and val_label != "n/a":
+            val_str = str(val_label)
+        else:
+            val_str = "n/a"
+
+        p_str = period if (period and period != "n/a") else period_end
+        a_str = row_accn if (row_accn and row_accn != "n/a") else accn
+        t_str = f"`{tag}`" if (tag and tag != "n/a") else "n/a"
+        if val_str == "n/a":
+            p_str = "n/a"
+            a_str = "n/a"
+            t_str = "n/a"
+        return f"| **{name}** | {val_str} | {p_str} | {a_str} | {t_str} |"
+
+    out = [
+        f"### Audited Financial Summary: {company} ({ticker})",
+        f"**Source:** SEC EDGAR Form 10-K | **Fiscal Year:** FY{fy} (ended {period_end}) | **Accession Number:** {accn}",
+        "",
+        "| Financial Metric | Reported Value | Fiscal Period | Accession Number | GAAP Concept Tag |",
+        "| :--- | :--- | :--- | :--- | :--- |",
+    ]
+
+    out.append(_fmt_row("Total Revenue", metrics.get("revenue_label"), metrics.get("revenue_raw"), metrics.get("period_end_date"), metrics.get("accession_number"), metrics.get("revenue_tag")))
+    out.append(_fmt_row("Gross Profit", metrics.get("gross_profit_label"), metrics.get("gross_profit_raw"), metrics.get("period_end_date"), metrics.get("accession_number"), metrics.get("gross_profit_tag")))
+    out.append(_fmt_row("Gross Margin", metrics.get("margin_label"), None, metrics.get("period_end_date"), metrics.get("accession_number"), metrics.get("margin_tag") or "Computed: GrossProfit / Revenues"))
+    out.append(_fmt_row("Operating Income", metrics.get("operating_income_label"), metrics.get("operating_income_raw"), metrics.get("operating_income_period") or metrics.get("period_end_date"), metrics.get("operating_income_accession") or metrics.get("accession_number"), metrics.get("operating_income_tag")))
+    out.append(_fmt_row("Operating Margin", metrics.get("operating_margin_label"), None, metrics.get("period_end_date"), metrics.get("accession_number"), "Computed: OperatingIncome / Revenues"))
+    out.append(_fmt_row("Net Income", metrics.get("net_income_label"), metrics.get("net_income_raw"), metrics.get("net_income_period") or metrics.get("period_end_date"), metrics.get("net_income_accession") or metrics.get("accession_number"), metrics.get("net_income_tag")))
+    out.append(_fmt_row("Net Margin", metrics.get("net_margin_label"), None, metrics.get("period_end_date"), metrics.get("accession_number"), "Computed: NetIncome / Revenues"))
+    out.append(_fmt_row("Operating Cash Flow", metrics.get("operating_cash_flow_label"), metrics.get("operating_cash_flow_raw"), metrics.get("operating_cash_flow_period") or metrics.get("period_end_date"), metrics.get("operating_cash_flow_accession") or metrics.get("accession_number"), metrics.get("operating_cash_flow_tag")))
+    out.append(_fmt_row("Capital Expenditures", metrics.get("capex_label"), metrics.get("capex_raw"), metrics.get("capex_period") or metrics.get("period_end_date"), metrics.get("capex_accession") or metrics.get("accession_number"), metrics.get("capex_tag")))
+
+    # Free Cash Flow: only if both operating cash flow and capex are present
+    ocf_raw = metrics.get("operating_cash_flow_raw")
+    capex_raw = metrics.get("capex_raw")
+    if ocf_raw is not None and capex_raw is not None:
+        fcf_raw = ocf_raw - capex_raw
+        fcf_label = f"${fcf_raw / 1e9:.2f}B"
+        out.append(_fmt_row("Free Cash Flow", fcf_label, fcf_raw, metrics.get("period_end_date"), metrics.get("accession_number"), "Computed: OperatingCashFlow - Capex"))
+    else:
+        out.append("| **Free Cash Flow** | n/a | n/a | n/a | n/a |")
+
+    out.append(_fmt_row("Total Assets", metrics.get("total_assets_label"), metrics.get("total_assets_raw"), metrics.get("total_assets_period") or metrics.get("period_end_date"), metrics.get("total_assets_accession") or metrics.get("accession_number"), metrics.get("total_assets_tag")))
+    out.append(_fmt_row("Cash & Equivalents", metrics.get("cash_and_equiv_label"), metrics.get("cash_and_equiv_raw"), metrics.get("cash_and_equiv_period") or metrics.get("period_end_date"), metrics.get("cash_and_equiv_accession") or metrics.get("accession_number"), metrics.get("cash_and_equiv_tag")))
+    out.append(_fmt_row("R&D Expense", metrics.get("rd_expense_label"), metrics.get("rd_expense_raw"), metrics.get("rd_expense_period") or metrics.get("period_end_date"), metrics.get("rd_expense_accession") or metrics.get("accession_number"), metrics.get("rd_expense_tag")))
+
+    out.append("")
+    out.append(
+        "*(Note: All metrics, GAAP tags, accession numbers, and formulas above are rendered directly in code from audited SEC EDGAR XBRL filings. Zero fallback defaults.)*"
+    )
+    return "\n".join(out)
+
+
+
+
 class XBRLParser:
     """Parses audited financial metrics from SEC EDGAR XBRL company facts."""
 
     @staticmethod
-    def _filter_annual_10k(entries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-        """Filters entries for Form 10-K full fiscal year disclosures (~12 month duration).
-
-        Groups by period end date and retains the most recently filed entry for restatements.
-        """
-        by_end: dict[str, dict[str, Any]] = {}
-        for e in entries:
-            form = (e.get("form") or "").upper()
-            if "10-K" not in form:
+    def _find_latest_10k_accn(us_gaap: dict[str, Any]) -> str | None:
+        """Finds accession number of the latest 10-K filing across all 10-K entries."""
+        candidates = []
+        for tag_data in us_gaap.values():
+            if not isinstance(tag_data, dict) or "units" not in tag_data:
                 continue
-            start = e.get("start")
-            end = e.get("end")
-            val = e.get("val")
-            if val is None or not end:
-                continue
+            for u in tag_data["units"].values():
+                for e in u:
+                    form = (e.get("form") or "").upper()
+                    if "10-K" in form and e.get("accn") and e.get("end"):
+                        candidates.append((str(e.get("end")), str(e.get("filed") or ""), str(e["accn"])))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        return candidates[0][2]
 
-            is_annual = False
-            if start and end:
-                try:
-                    s_dt = datetime.strptime(start, "%Y-%m-%d")
-                    e_dt = datetime.strptime(end, "%Y-%m-%d")
-                    days = (e_dt - s_dt).days
-                    if 330 <= days <= 400:
-                        is_annual = True
-                except Exception:
-                    pass
-            elif (e.get("fp") or "").upper() == "FY":
-                is_annual = True
-
-            if is_annual:
-                # If end date already present, keep the most recently filed one (for restatements)
-                existing = by_end.get(end)
-                if existing is None or str(e.get("filed") or "") > str(existing.get("filed") or ""):
-                    by_end[end] = e
-
-        return by_end
-
-    def _find_best_annual_facts(
-        self, gaap_facts: dict[str, Any], tag_candidates: list[str]
-    ) -> tuple[str | None, dict[str, dict[str, Any]]]:
-        """Finds candidate tag that contains the most recent 10-K annual facts."""
-        best_tag = None
-        best_entries: dict[str, dict[str, Any]] = {}
-        best_latest_date = ""
+    @staticmethod
+    def _select_metric_entry(
+        us_gaap: dict[str, Any],
+        tag_candidates: list[str],
+        is_instant: bool,
+        target_accn: str | None = None,
+        target_end_date: str | None = None,
+    ) -> tuple[str | None, dict[str, Any] | None]:
+        """Selects the best XBRL entry for a metric matching target accession and duration ~365 days."""
+        clean_target_accn = target_accn.replace("-", "") if target_accn else None
+        all_considered = []
 
         for tag in tag_candidates:
-            if tag in gaap_facts and "units" in gaap_facts[tag]:
-                units = gaap_facts[tag]["units"]
-                if "USD" in units:
-                    annual_map = self._filter_annual_10k(units["USD"])
-                    if annual_map:
-                        latest_date = max(annual_map.keys())
-                        if latest_date > best_latest_date:
-                            best_latest_date = latest_date
-                            best_tag = tag
-                            best_entries = annual_map
+            if tag not in us_gaap or "units" not in us_gaap[tag]:
+                continue
+            units = us_gaap[tag]["units"]
+            unit_key = "USD" if "USD" in units else list(units.keys())[0] if units else None
+            if not unit_key:
+                continue
 
-        return best_tag, best_entries
+            for e in units[unit_key]:
+                form = (e.get("form") or "").upper()
+                if "10-K" not in form:
+                    continue
+                val = e.get("val")
+                if val is None:
+                    continue
 
-    def parse_metrics(self, ticker: str, facts_json: dict[str, Any]) -> dict[str, Any]:
+                start = e.get("start")
+                end = e.get("end")
+                acc = str(e.get("accn") or "")
+                filed = str(e.get("filed") or "")
+                clean_acc = acc.replace("-", "")
+
+                days = None
+                if start and end:
+                    try:
+                        s_dt = datetime.strptime(start, "%Y-%m-%d")
+                        e_dt = datetime.strptime(end, "%Y-%m-%d")
+                        days = (e_dt - s_dt).days
+                    except Exception:
+                        pass
+
+                entry_rec = {
+                    "tag": tag,
+                    "val": val,
+                    "start": start,
+                    "end": end,
+                    "days": days,
+                    "form": form,
+                    "accn": acc,
+                    "filed": filed,
+                    "fy": e.get("fy"),
+                    "fp": e.get("fp"),
+                    "from_target_10k": bool(clean_target_accn and clean_acc == clean_target_accn),
+                }
+
+                if is_instant:
+                    if start is None or days is None or days == 0:
+                        all_considered.append(entry_rec)
+                else:
+                    if days is not None and 330 <= days <= 400:
+                        all_considered.append(entry_rec)
+                    elif (e.get("fp") or "").upper() == "FY" and start is None:
+                        all_considered.append(entry_rec)
+
+        if not all_considered:
+            return None, None
+
+        if target_end_date:
+            all_considered = [e for e in all_considered if e.get("end") == target_end_date]
+            if not all_considered:
+                return None, None
+
+        target_entries = [e for e in all_considered if e["from_target_10k"]] if clean_target_accn else []
+        pool = target_entries if target_entries else all_considered
+
+        pool_sorted = sorted(pool, key=lambda x: (x.get("end") or "", x.get("filed") or ""), reverse=True)
+        chosen = pool_sorted[0]
+        return chosen["tag"], chosen
+
+    def parse_metrics(
+        self, ticker: str, facts_json: dict[str, Any], target_accn: str | None = None
+    ) -> dict[str, Any]:
         """Extracts audited 10-K revenue, gross margin, YoY growth, periods, and accession numbers.
 
         Extracts both current and prior-year values by period end date and duration (~12 months).
@@ -422,21 +548,53 @@ class XBRLParser:
         us_gaap = facts.get("us-gaap", {})
         entity_name = facts_json.get("entityName") or facts_json.get("cik")
 
+        # Determine target 10-K accession if not passed
+        if not target_accn:
+            target_accn = self._find_latest_10k_accn(us_gaap)
+
         # 1. Revenue
-        rev_tag, annual_rev = self._find_best_annual_facts(us_gaap, REVENUE_TAGS)
-        if not annual_rev:
+        rev_tag_used, cur_rev_entry = self._select_metric_entry(
+            us_gaap, REVENUE_TAGS, is_instant=False, target_accn=target_accn
+        )
+        if not cur_rev_entry:
             raise ValueError(f"No annual 10-K revenue facts found in XBRL data for {clean_ticker}")
 
-        sorted_rev_ends = sorted(annual_rev.keys(), reverse=True)
-        cur_end = sorted_rev_ends[0]
-        prior_end = sorted_rev_ends[1] if len(sorted_rev_ends) > 1 else None
-
-        cur_rev_entry = annual_rev[cur_end]
+        cur_end = cur_rev_entry["end"]
         revenue_val = float(cur_rev_entry["val"])
         fy = int(cur_rev_entry.get("fy") or cur_end[:4])
         period_end = cur_end
-        accn = str(cur_rev_entry.get("accn") or "")
-        rev_tag_used = rev_tag
+        accn = str(cur_rev_entry.get("accn") or target_accn or "")
+
+        # Find prior year end date from target 10-K annual entries
+        rev_all_target = []
+        rev_all_annual = []
+        if rev_tag_used and rev_tag_used in us_gaap and "units" in us_gaap[rev_tag_used]:
+            u_dict = us_gaap[rev_tag_used]["units"]
+            u_list = u_dict.get("USD", [])
+            clean_tgt = target_accn.replace("-", "") if target_accn else ""
+            for e in u_list:
+                form = (e.get("form") or "").upper()
+                if "10-K" not in form:
+                    continue
+                start, end = e.get("start"), e.get("end")
+                if not end:
+                    continue
+                days = None
+                if start:
+                    try:
+                        days = (datetime.strptime(end, "%Y-%m-%d") - datetime.strptime(start, "%Y-%m-%d")).days
+                    except Exception:
+                        pass
+                is_annual = (days is not None and 330 <= days <= 400) or ((e.get("fp") or "").upper() == "FY" and start is None)
+                if is_annual:
+                    rev_all_annual.append(end)
+                    if str(e.get("accn") or "").replace("-", "") == clean_tgt:
+                        rev_all_target.append(end)
+        target_annual_ends = sorted(set(rev_all_target), reverse=True)
+        prior_end = target_annual_ends[1] if len(target_annual_ends) > 1 else None
+        if not prior_end:
+            earlier_ends = sorted([ed for ed in set(rev_all_annual) if ed < cur_end], reverse=True)
+            prior_end = earlier_ends[0] if earlier_ends else None
 
         # Prior Revenue & YoY Growth
         growth_yoy = None
@@ -445,47 +603,51 @@ class XBRLParser:
         prior_accn = None
         prior_fy = None
 
-        if prior_end and prior_end in annual_rev:
-            prev_rev_entry = annual_rev[prior_end]
-            prior_rev_val = float(prev_rev_entry["val"])
-            prior_accn = str(prev_rev_entry.get("accn") or accn)
-            prior_fy = int(prev_rev_entry.get("fy") or prior_end[:4])
-            growth_yoy = round(((revenue_val - prior_rev_val) / prior_rev_val) * 100.0, 1)
-            growth_period = f"FY ended {period_end} vs FY ended {prior_end}"
+        if prior_end:
+            _, prev_rev_entry = self._select_metric_entry(
+                us_gaap, REVENUE_TAGS, is_instant=False, target_accn=target_accn, target_end_date=prior_end
+            )
+            if prev_rev_entry:
+                prior_rev_val = float(prev_rev_entry["val"])
+                prior_accn = str(prev_rev_entry.get("accn") or accn)
+                prior_fy = int(prev_rev_entry.get("fy") or prior_end[:4])
+                growth_yoy = round(((revenue_val - prior_rev_val) / prior_rev_val) * 100.0, 1)
+                growth_period = f"FY ended {period_end} vs FY ended {prior_end}"
 
         # 2. Gross Profit & Cost of Revenue
-        gp_tag, annual_gp = self._find_best_annual_facts(us_gaap, GROSS_PROFIT_TAGS)
-        cost_tag, annual_cost = self._find_best_annual_facts(us_gaap, COST_OF_REVENUE_TAGS)
+        gp_tag_used, cur_gp_entry = self._select_metric_entry(
+            us_gaap, GROSS_PROFIT_TAGS, is_instant=False, target_accn=target_accn, target_end_date=cur_end
+        )
+        cost_tag_used, cur_cost_entry = self._select_metric_entry(
+            us_gaap, COST_OF_REVENUE_TAGS, is_instant=False, target_accn=target_accn, target_end_date=cur_end
+        )
 
-        # Current period Gross Margin
-        cur_gp_val = None
-        cur_cost_val = None
-        margin_tag_used = None
-        cost_tag_used = None
-
-        if annual_gp and cur_end in annual_gp:
-            cur_gp_val = float(annual_gp[cur_end]["val"])
-            margin_tag_used = gp_tag
-        if annual_cost and cur_end in annual_cost:
-            cur_cost_val = float(annual_cost[cur_end]["val"])
-            cost_tag_used = cost_tag
+        cur_gp_val = float(cur_gp_entry["val"]) if cur_gp_entry else None
+        cur_cost_val = float(cur_cost_entry["val"]) if cur_cost_entry else None
+        margin_tag_used = gp_tag_used
 
         if cur_gp_val is None and cur_cost_val is not None:
             cur_gp_val = revenue_val - cur_cost_val
-            margin_tag_used = f"Computed: ({rev_tag} - {cost_tag})"
+            margin_tag_used = f"Computed: ({rev_tag_used} - {cost_tag_used})"
 
         gross_margin = round((cur_gp_val / revenue_val) * 100.0, 1) if cur_gp_val is not None else None
 
-        # Prior period Gross Margin
+        # Prior Gross Profit & Cost of Revenue
         prior_gp_val = None
         prior_cost_val = None
         prior_gross_margin = None
 
         if prior_end:
-            if annual_gp and prior_end in annual_gp:
-                prior_gp_val = float(annual_gp[prior_end]["val"])
-            if annual_cost and prior_end in annual_cost:
-                prior_cost_val = float(annual_cost[prior_end]["val"])
+            _, prev_gp_entry = self._select_metric_entry(
+                us_gaap, GROSS_PROFIT_TAGS, is_instant=False, target_accn=target_accn, target_end_date=prior_end
+            )
+            _, prev_cost_entry = self._select_metric_entry(
+                us_gaap, COST_OF_REVENUE_TAGS, is_instant=False, target_accn=target_accn, target_end_date=prior_end
+            )
+            if prev_gp_entry:
+                prior_gp_val = float(prev_gp_entry["val"])
+            if prev_cost_entry:
+                prior_cost_val = float(prev_cost_entry["val"])
             if prior_gp_val is None and prior_cost_val is not None and prior_rev_val is not None:
                 prior_gp_val = prior_rev_val - prior_cost_val
             if prior_gp_val is not None and prior_rev_val:
@@ -500,30 +662,97 @@ class XBRLParser:
         prior_gp_in_billions = round(prior_gp_val / 1e9, 2) if prior_gp_val is not None else None
         prior_cost_in_billions = round(prior_cost_val / 1e9, 2) if prior_cost_val is not None else None
 
-        # 3. Operating Income, Net Income, R&D Expense, Cash & Equivalents, Capex
-        opinc_tag, annual_opinc = self._find_best_annual_facts(us_gaap, OPERATING_INCOME_TAGS)
-        ni_tag, annual_ni = self._find_best_annual_facts(us_gaap, NET_INCOME_TAGS)
-        rd_tag, annual_rd = self._find_best_annual_facts(us_gaap, RD_EXPENSE_TAGS)
-        cash_tag, annual_cash = self._find_best_annual_facts(us_gaap, CASH_AND_EQUIV_TAGS)
-        capex_tag, annual_capex = self._find_best_annual_facts(us_gaap, CAPEX_TAGS)
+        # 3. Core Statement Metrics
+        opinc_tag, cur_opinc_entry = self._select_metric_entry(
+            us_gaap, OPERATING_INCOME_TAGS, is_instant=False, target_accn=target_accn, target_end_date=cur_end
+        )
+        ni_tag, cur_ni_entry = self._select_metric_entry(
+            us_gaap, NET_INCOME_TAGS, is_instant=False, target_accn=target_accn, target_end_date=cur_end
+        )
+        rd_tag, cur_rd_entry = self._select_metric_entry(
+            us_gaap, RD_EXPENSE_TAGS, is_instant=False, target_accn=target_accn, target_end_date=cur_end
+        )
+        cash_tag, cur_cash_entry = self._select_metric_entry(
+            us_gaap, CASH_AND_EQUIV_TAGS, is_instant=True, target_accn=target_accn, target_end_date=cur_end
+        )
+        capex_tag, cur_capex_entry = self._select_metric_entry(
+            us_gaap, CAPEX_TAGS, is_instant=False, target_accn=target_accn, target_end_date=cur_end
+        )
+        assets_tag, cur_assets_entry = self._select_metric_entry(
+            us_gaap, ASSETS_TAGS, is_instant=True, target_accn=target_accn, target_end_date=cur_end
+        )
+        ocf_tag, cur_ocf_entry = self._select_metric_entry(
+            us_gaap, OPERATING_CASH_FLOW_TAGS, is_instant=False, target_accn=target_accn, target_end_date=cur_end
+        )
 
-        def _get_metric_val_accn(annual_map, end_date):
-            if annual_map and end_date in annual_map:
-                entry = annual_map[end_date]
-                return float(entry["val"]), str(entry.get("accn") or accn)
-            return None, None
+        cur_opinc_val = float(cur_opinc_entry["val"]) if cur_opinc_entry else None
+        cur_opinc_accn = str(cur_opinc_entry.get("accn") or accn) if cur_opinc_entry else None
+        cur_ni_val = float(cur_ni_entry["val"]) if cur_ni_entry else None
+        cur_ni_accn = str(cur_ni_entry.get("accn") or accn) if cur_ni_entry else None
+        cur_rd_val = float(cur_rd_entry["val"]) if cur_rd_entry else None
+        cur_rd_accn = str(cur_rd_entry.get("accn") or accn) if cur_rd_entry else None
+        cur_cash_val = float(cur_cash_entry["val"]) if cur_cash_entry else None
+        cur_cash_accn = str(cur_cash_entry.get("accn") or accn) if cur_cash_entry else None
+        cur_capex_val = float(cur_capex_entry["val"]) if cur_capex_entry else None
+        cur_capex_accn = str(cur_capex_entry.get("accn") or accn) if cur_capex_entry else None
+        cur_assets_val = float(cur_assets_entry["val"]) if cur_assets_entry else None
+        cur_assets_accn = str(cur_assets_entry.get("accn") or accn) if cur_assets_entry else None
+        cur_ocf_val = float(cur_ocf_entry["val"]) if cur_ocf_entry else None
+        cur_ocf_accn = str(cur_ocf_entry.get("accn") or accn) if cur_ocf_entry else None
 
-        cur_opinc_val, cur_opinc_accn = _get_metric_val_accn(annual_opinc, cur_end)
-        cur_ni_val, cur_ni_accn = _get_metric_val_accn(annual_ni, cur_end)
-        cur_rd_val, cur_rd_accn = _get_metric_val_accn(annual_rd, cur_end)
-        cur_cash_val, cur_cash_accn = _get_metric_val_accn(annual_cash, cur_end)
-        cur_capex_val, cur_capex_accn = _get_metric_val_accn(annual_capex, cur_end)
+        # Prior period core metrics
+        prior_opinc_val = prior_opinc_accn = None
+        prior_ni_val = prior_ni_accn = None
+        prior_rd_val = prior_rd_accn = None
+        prior_cash_val = prior_cash_accn = None
+        prior_capex_val = prior_capex_accn = None
+        prior_assets_val = prior_assets_accn = None
+        prior_ocf_val = prior_ocf_accn = None
 
-        prior_opinc_val, prior_opinc_accn = _get_metric_val_accn(annual_opinc, prior_end) if prior_end else (None, None)
-        prior_ni_val, prior_ni_accn = _get_metric_val_accn(annual_ni, prior_end) if prior_end else (None, None)
-        prior_rd_val, prior_rd_accn = _get_metric_val_accn(annual_rd, prior_end) if prior_end else (None, None)
-        prior_cash_val, prior_cash_accn = _get_metric_val_accn(annual_cash, prior_end) if prior_end else (None, None)
-        prior_capex_val, prior_capex_accn = _get_metric_val_accn(annual_capex, prior_end) if prior_end else (None, None)
+        if prior_end:
+            _, prev_opinc_e = self._select_metric_entry(
+                us_gaap, OPERATING_INCOME_TAGS, is_instant=False, target_accn=target_accn, target_end_date=prior_end
+            )
+            _, prev_ni_e = self._select_metric_entry(
+                us_gaap, NET_INCOME_TAGS, is_instant=False, target_accn=target_accn, target_end_date=prior_end
+            )
+            _, prev_rd_e = self._select_metric_entry(
+                us_gaap, RD_EXPENSE_TAGS, is_instant=False, target_accn=target_accn, target_end_date=prior_end
+            )
+            _, prev_cash_e = self._select_metric_entry(
+                us_gaap, CASH_AND_EQUIV_TAGS, is_instant=True, target_accn=target_accn, target_end_date=prior_end
+            )
+            _, prev_capex_e = self._select_metric_entry(
+                us_gaap, CAPEX_TAGS, is_instant=False, target_accn=target_accn, target_end_date=prior_end
+            )
+            _, prev_assets_e = self._select_metric_entry(
+                us_gaap, ASSETS_TAGS, is_instant=True, target_accn=target_accn, target_end_date=prior_end
+            )
+            _, prev_ocf_e = self._select_metric_entry(
+                us_gaap, OPERATING_CASH_FLOW_TAGS, is_instant=False, target_accn=target_accn, target_end_date=prior_end
+            )
+
+            if prev_opinc_e:
+                prior_opinc_val = float(prev_opinc_e["val"])
+                prior_opinc_accn = str(prev_opinc_e.get("accn") or accn)
+            if prev_ni_e:
+                prior_ni_val = float(prev_ni_e["val"])
+                prior_ni_accn = str(prev_ni_e.get("accn") or accn)
+            if prev_rd_e:
+                prior_rd_val = float(prev_rd_e["val"])
+                prior_rd_accn = str(prev_rd_e.get("accn") or accn)
+            if prev_cash_e:
+                prior_cash_val = float(prev_cash_e["val"])
+                prior_cash_accn = str(prev_cash_e.get("accn") or accn)
+            if prev_capex_e:
+                prior_capex_val = float(prev_capex_e["val"])
+                prior_capex_accn = str(prev_capex_e.get("accn") or accn)
+            if prev_assets_e:
+                prior_assets_val = float(prev_assets_e["val"])
+                prior_assets_accn = str(prev_assets_e.get("accn") or accn)
+            if prev_ocf_e:
+                prior_ocf_val = float(prev_ocf_e["val"])
+                prior_ocf_accn = str(prev_ocf_e.get("accn") or accn)
 
         # Derived Financial Metrics & Ratios (Code-computed with exact formulas)
         prior_opinc_margin = round((prior_opinc_val / prior_rev_val) * 100.0, 1) if (prior_opinc_val is not None and prior_rev_val) else None
@@ -577,11 +806,11 @@ class XBRLParser:
             "gross_profit": gp_in_billions,
             "gross_profit_raw": cur_gp_val,
             "gross_profit_label": f"${gp_in_billions}B" if gp_in_billions is not None else None,
-            "gross_profit_tag": gp_tag,
+            "gross_profit_tag": gp_tag_used,
             "cost_of_revenue": cost_in_billions,
             "cost_of_revenue_raw": cur_cost_val,
             "cost_label": f"${cost_in_billions}B" if cost_in_billions is not None else None,
-            "cost_tag": cost_tag_used or cost_tag,
+            "cost_tag": cost_tag_used,
             "gross_margin": gross_margin,
             "margin_label": f"{gross_margin}%" if gross_margin is not None else "N/A",
             "margin_source": "SEC filing",
@@ -598,26 +827,43 @@ class XBRLParser:
             "operating_income_label": f"${round(cur_opinc_val / 1e9, 2)}B" if cur_opinc_val is not None else None,
             "operating_income_tag": opinc_tag,
             "operating_income_accession": cur_opinc_accn,
+            "operating_income_period": period_end,
             "net_income": round(cur_ni_val / 1e9, 2) if cur_ni_val is not None else None,
             "net_income_raw": cur_ni_val,
             "net_income_label": f"${round(cur_ni_val / 1e9, 2)}B" if cur_ni_val is not None else None,
             "net_income_tag": ni_tag,
             "net_income_accession": cur_ni_accn,
+            "net_income_period": period_end,
+            "total_assets": round(cur_assets_val / 1e9, 2) if cur_assets_val is not None else None,
+            "total_assets_raw": cur_assets_val,
+            "total_assets_label": f"${round(cur_assets_val / 1e9, 2)}B" if cur_assets_val is not None else None,
+            "total_assets_tag": assets_tag,
+            "total_assets_accession": cur_assets_accn,
+            "total_assets_period": period_end,
+            "operating_cash_flow": round(cur_ocf_val / 1e9, 2) if cur_ocf_val is not None else None,
+            "operating_cash_flow_raw": cur_ocf_val,
+            "operating_cash_flow_label": f"${round(cur_ocf_val / 1e9, 2)}B" if cur_ocf_val is not None else None,
+            "operating_cash_flow_tag": ocf_tag,
+            "operating_cash_flow_accession": cur_ocf_accn,
+            "operating_cash_flow_period": period_end,
             "rd_expense": round(cur_rd_val / 1e9, 2) if cur_rd_val is not None else None,
             "rd_expense_raw": cur_rd_val,
             "rd_expense_label": f"${round(cur_rd_val / 1e9, 2)}B" if cur_rd_val is not None else None,
             "rd_expense_tag": rd_tag,
             "rd_expense_accession": cur_rd_accn,
+            "rd_expense_period": period_end,
             "cash_and_equiv": round(cur_cash_val / 1e9, 2) if cur_cash_val is not None else None,
             "cash_and_equiv_raw": cur_cash_val,
             "cash_and_equiv_label": f"${round(cur_cash_val / 1e9, 2)}B" if cur_cash_val is not None else None,
             "cash_and_equiv_tag": cash_tag,
             "cash_and_equiv_accession": cur_cash_accn,
+            "cash_and_equiv_period": period_end,
             "capex": round(cur_capex_val / 1e9, 2) if cur_capex_val is not None else None,
             "capex_raw": cur_capex_val,
             "capex_label": f"${round(cur_capex_val / 1e9, 2)}B" if cur_capex_val is not None else None,
             "capex_tag": capex_tag,
             "capex_accession": cur_capex_accn,
+            "capex_period": period_end,
             "prior_fiscal_year": prior_fy,
             "prior_period_end_date": prior_end,
             "prior_accession_number": prior_accn,
@@ -638,6 +884,12 @@ class XBRLParser:
             "prior_net_income": round(prior_ni_val / 1e9, 2) if prior_ni_val is not None else None,
             "prior_net_income_raw": prior_ni_val,
             "prior_net_income_label": f"${round(prior_ni_val / 1e9, 2)}B" if prior_ni_val is not None else None,
+            "prior_total_assets": round(prior_assets_val / 1e9, 2) if prior_assets_val is not None else None,
+            "prior_total_assets_raw": prior_assets_val,
+            "prior_total_assets_label": f"${round(prior_assets_val / 1e9, 2)}B" if prior_assets_val is not None else None,
+            "prior_operating_cash_flow": round(prior_ocf_val / 1e9, 2) if prior_ocf_val is not None else None,
+            "prior_operating_cash_flow_raw": prior_ocf_val,
+            "prior_operating_cash_flow_label": f"${round(prior_ocf_val / 1e9, 2)}B" if prior_ocf_val is not None else None,
             "prior_rd_expense": round(prior_rd_val / 1e9, 2) if prior_rd_val is not None else None,
             "prior_rd_expense_raw": prior_rd_val,
             "prior_rd_expense_label": f"${round(prior_rd_val / 1e9, 2)}B" if prior_rd_val is not None else None,
@@ -699,6 +951,58 @@ class XBRLParser:
         }
 
 
+MONTHS_MAP = {
+    "jan": "01", "january": "01",
+    "feb": "02", "february": "02",
+    "mar": "03", "march": "03",
+    "apr": "04", "april": "04",
+    "may": "05",
+    "jun": "06", "june": "06",
+    "jul": "07", "july": "07",
+    "aug": "08", "august": "08",
+    "sep": "09", "september": "09",
+    "oct": "10", "october": "10",
+    "nov": "11", "november": "11",
+    "dec": "12", "december": "12",
+}
+
+
+def parse_iso_date(text: str, default_month_day: str = "") -> str:
+    """Parses date string into YYYY-MM-DD format."""
+    # Pattern 1: Month Day, Year (e.g. 'Jan 25, 2026' or 'September 26, 2026')
+    m1 = re.search(
+        r"\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*(\d{1,2}),?\s*(202\d)\b",
+        text,
+        re.I,
+    )
+    if m1:
+        mon = MONTHS_MAP[m1.group(1).lower()]
+        day = int(m1.group(2))
+        yr = m1.group(3)
+        return f"{yr}-{mon}-{day:02d}"
+
+    # Pattern 2: YYYY-MM-DD
+    m2 = re.search(r"\b(202\d)-(\d{2})-(\d{2})\b", text)
+    if m2:
+        return m2.group(0)
+
+    # Pattern 3: Year with default_month_day (e.g. 'June 30' or 'December 31')
+    m3 = re.search(r"\b(202\d)\b", text)
+    if m3 and default_month_day:
+        yr = m3.group(1)
+        m_md = re.search(
+            r"\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*(\d{1,2})\b",
+            default_month_day,
+            re.I,
+        )
+        if m_md:
+            mon = MONTHS_MAP[m_md.group(1).lower()]
+            day = int(m_md.group(2))
+            return f"{yr}-{mon}-{day:02d}"
+
+    return ""
+
+
 def convert_table_to_structured_text(table_tag: Any, surrounding_text: str = "") -> str:
     """Converts an HTML table into structured text rows.
 
@@ -709,16 +1013,28 @@ def convert_table_to_structured_text(table_tag: Any, surrounding_text: str = "")
     - Colspan and multi-row headers without duplicating line items
     - Footnote markers
     - Units in caption or header
-    - Layout table neutralization/dropping
+    - Layout table neutralization/dropping (signatures, TOC, index)
+    - True ISO period end dates alongside fiscal year labels: 'FY2026 (2026-01-25)'
+    - Chronological ordering: ensures column 1 is always the latest fiscal period
     """
     all_text = table_tag.get_text(separator=" ")
     clean_all = re.sub(r"\s+", " ", all_text).strip()
 
-    # Drop signature blocks, cover page metadata, and empty TOC tables
+    # Drop signature blocks, cover page metadata, and TOC layout tables
     if any(sig in clean_all for sig in ["/s/", "By:", "Title:", "Indicate by check mark"]):
         num_matches = re.findall(r"\b\d{1,3}(?:,\d{3})+\b", clean_all)
         if len(num_matches) < 2:
             return ""
+
+    if any(
+        toc in clean_all
+        for toc in [
+            "Index to Consolidated Financial Statements",
+            "INDEX TO CONSOLIDATED FINANCIAL STATEMENTS",
+            "Index to Financial Statements",
+        ]
+    ):
+        return ""
 
     unit_match = re.search(
         r"\((?:in\s+millions|in\s+thousands|in\s+billions|\$\s*in\s+millions|usd\s+millions|in\s+millions,\s*except[^\)]*)\)",
@@ -771,6 +1087,15 @@ def convert_table_to_structured_text(table_tag: Any, surrounding_text: str = "")
             if cur_paren and ("(" in val or ")" in val):
                 val = f"-${cur_paren.group(1)}"
 
+            # merge following '%'
+            if i + 1 < len(r) and r[i + 1].strip() == "%":
+                val = f"{val}%"
+                i += 1
+            elif val == "%" and merged and re.search(r"\d", merged[-1]):
+                merged[-1] = f"{merged[-1]}%"
+                i += 1
+                continue
+
             val = re.sub(r"\s*\([a-z0-9]\)$", "", val, flags=re.I).strip()
             if val in ["—", "–", "-"]:
                 val = "—"
@@ -783,25 +1108,54 @@ def convert_table_to_structured_text(table_tag: Any, surrounding_text: str = "")
     if not cleaned_rows:
         return ""
 
+    # Check for spanning month/day in top 5 rows (e.g. 'Year Ended June 30,' or 'Year Ended December 31,')
+    top_header_text = " ".join([" ".join(r) for r in cleaned_rows[:5]])
+    default_md = ""
+    md_match = re.search(
+        r"\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*(\d{1,2})\b",
+        top_header_text,
+        re.I,
+    )
+    if md_match:
+        default_md = f"{md_match.group(1)} {md_match.group(2)}"
+
     col_headers: list[str] = []
+    col_years: list[int] = []
     data_start = 0
-    for r_idx, r in enumerate(cleaned_rows[:4]):
+    for r_idx, r in enumerate(cleaned_rows[:6]):
         years = [re.search(r"\b(202\d)\b", c) for c in r]
         has_years = any(years)
-        has_values = any(re.search(r"^\$?-?\d{1,3}(?:,\d{3})+(?:\.\d+)?$", c) for c in r)
+        has_values = any(re.search(r"^\$?-?\d{1,3}(?:,\d{3})+(?:\.\d+)?%?$", c) for c in r)
         if has_years or (not has_values and r_idx == 0):
             extracted: list[str] = []
+            extracted_yrs: list[int] = []
             for c in r:
                 ym = re.search(r"\b(202\d)\b", c)
                 if ym:
-                    extracted.append(f"FY{ym.group(1)}")
+                    yr = ym.group(1)
+                    iso = parse_iso_date(c, default_month_day=default_md)
+                    label = f"FY{yr} ({iso})" if iso else f"FY{yr}"
+                    extracted.append(label)
+                    extracted_yrs.append(int(yr))
                 elif re.search(r"[a-zA-Z]", c) and len(c) < 30:
                     extracted.append(c)
             if extracted:
                 col_headers = extracted
+                col_years = extracted_yrs
             data_start = r_idx + 1
         else:
             break
+
+    # Reversal rule: ONLY reverse if pure years table (all column headers are years)
+    reverse_cols = False
+    if (
+        len(col_years) >= 2
+        and len(col_years) == len(col_headers)
+        and col_years == sorted(col_years)
+        and col_years[0] < col_years[-1]
+    ):
+        reverse_cols = True
+        col_headers.reverse()
 
     lines: list[str] = []
     for r in cleaned_rows[data_start:]:
@@ -821,6 +1175,9 @@ def convert_table_to_structured_text(table_tag: Any, surrounding_text: str = "")
         if not label or not vals:
             continue
 
+        if reverse_cols and len(vals) == len(col_headers):
+            vals.reverse()
+
         active_headers = col_headers
         if len(active_headers) == len(vals) + 1:
             active_headers = active_headers[1:]
@@ -829,12 +1186,29 @@ def convert_table_to_structured_text(table_tag: Any, surrounding_text: str = "")
         ]:
             active_headers = active_headers[1:]
 
+        # Validate alignment: period label must never be attached to change or percent cell
+        is_aligned = (len(vals) == len(active_headers))
         parts = [label]
-        for v_idx, v in enumerate(vals):
-            if v_idx < len(active_headers):
-                parts.append(f"{active_headers[v_idx]}: {v}")
-            else:
+
+        if not is_aligned:
+            parts.append("[unaligned]")
+            for v in vals:
                 parts.append(v)
+        else:
+            has_error = False
+            temp_parts = []
+            for h, v in zip(active_headers, vals):
+                is_period_hdr = "FY20" in h
+                if is_period_hdr and (v == "%" or v == "Change" or v.lower() == "pts"):
+                    has_error = True
+                    break
+                temp_parts.append(f"{h}: {v}")
+            if has_error:
+                parts.append("[unaligned]")
+                for v in vals:
+                    parts.append(v)
+            else:
+                parts.extend(temp_parts)
 
         line = " | ".join(parts)
         if units_str and units_str not in line:
@@ -976,7 +1350,7 @@ class Form10KParser:
                         text[s15 + 100:],
                         re.IGNORECASE,
                     )
-                    e15 = s15 + 100 + end_15.start() if end_15 else s15 + 150000
+                    e15 = s15 + 100 + end_15.start() if end_15 else len(text)
                     item8_text = (
                         f"{item8_text}\n\n"
                         f"=== FINANCIAL STATEMENTS & NOTES (VIA ITEM 15 REDIRECT) ===\n\n"
@@ -1020,15 +1394,15 @@ class SECIngestionService:
         clean_ticker = ticker.upper()
         logger.info(f"Starting SEC EDGAR ingestion for {clean_ticker} (CIK: {cik})")
 
-        # 1. Company Facts (XBRL)
-        facts = self.client.get_company_facts(cik)
-        metrics = self.xbrl_parser.parse_metrics(clean_ticker, facts)
-
-        # 2. Submissions
+        # 1. Submissions & Target 10-K Accession
         submissions = self.client.get_submissions(cik)
         submission_10k = self.find_latest_10k_submission(submissions)
         accn = submission_10k["accessionNumber"]
         primary_doc = submission_10k["primaryDocument"]
+
+        # 2. Company Facts (XBRL)
+        facts = self.client.get_company_facts(cik)
+        metrics = self.xbrl_parser.parse_metrics(clean_ticker, facts, target_accn=accn)
 
         # 3. Primary 10-K Document
         doc_raw = self.client.get_filing_document(cik, accn, primary_doc)
